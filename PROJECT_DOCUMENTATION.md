@@ -270,7 +270,49 @@ All menu items, groups, submenus, and badges for `LayoutAdmin` MUST be maintaine
 
 ---
 
-## ✅ 9. AI Agent Quality Gates (Checklist Sebelum Selesai)
+---
+
+## ☁️ 10. Vercel Deployment & SSR Bundling Architecture
+
+Untuk mencegah error build di Vercel (`unmatched-function-pattern` dan error bundler `pdfkit`):
+
+1. **Vercel Preset (`react-router.config.ts`)**:
+   Wajib menggunakan `@vercel/react-router/vite` agar React Router v7 menghasilkan output serverless function sesuai Vercel Build Output API:
+   ```ts
+   import { vercelPreset } from "@vercel/react-router/vite";
+   // ...
+   presets: [vercelPreset()],
+   ```
+
+2. **Clean `vercel.json`**:
+   **DILARANG** menambahkan blok konfigurasi `functions: { "**/*": ... }` di `vercel.json` jika tidak ada direktori `api/` tersendiri, karena Vercel CLI akan gagal melakukan matching serverless functions.
+   Cukup pertahankan konfigurasi region:
+   ```json
+   {
+     "regions": ["sin1"]
+   }
+   ```
+
+3. **Solusi Bundling PDFKit & React-PDF (`vite.config.ts`)**:
+   Asset font dan dependensi biner `pdfkit` di-bundle langsung ke runtime SSR melalui `ssr.noExternal` di `vite.config.ts`:
+   ```ts
+   ssr: {
+     noExternal: [
+       "@react-pdf/renderer",
+       "@react-pdf/font",
+       "@react-pdf/layout",
+       "@react-pdf/pdfkit",
+       "@react-pdf/primitives",
+       "@react-pdf/stylesheet",
+       "@react-pdf/yoga",
+       "pdfkit",
+     ],
+   },
+   ```
+
+---
+
+## ✅ 11. AI Agent Quality Gates (Checklist Sebelum Selesai)
 
 Sebelum menandai pekerjaan Anda selesai, jalankan checklist wajib ini:
 
@@ -290,4 +332,5 @@ bun run build
 | **Component Placement** | Placed in `core/`, `shared/`, or `feature/` (never root) | [ ] |
 | **Navigation** | Items declared in `app/constants/navigation.ts` | [ ] |
 | **Version Alignment** | Imports `APP_VERSION` from `~/constants/version` | [ ] |
+| **Vercel Config** | Clean `vercel.json` without invalid `functions` | [ ] |
 | **String Error Safety** | Action errors return string or unpacked error | [ ] |
