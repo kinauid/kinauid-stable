@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+
+# React Router & Auto-generated types
+.react-router/
+auto-imports.d.ts
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log
+
+# Editor & MCP
+.vscode/
+.idea/
+.mcp.json
+.cursor/mcp.json
+
+# Vercel
+.vercel/

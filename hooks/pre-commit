@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────
+# pre-commit hook: auto-increment patch version in
+# app/constants/version.ts on every commit.
+# Format: vMAJOR.MINOR.PATCH
+# ─────────────────────────────────────────────────────
+
+VERSION_FILE="app/constants/version.ts"
+
+# Read current version
+CURRENT=$(grep -oP "v\d+\.\d+\.\d+" "$VERSION_FILE" | head -1)
+
+if [ -z "$CURRENT" ]; then
+  echo "[version-bump] Could not find version in $VERSION_FILE, skipping."
+  exit 0
+fi
+
+# Split into parts
+MAJOR=$(echo "$CURRENT" | cut -d. -f1 | tr -d 'v')
+MINOR=$(echo "$CURRENT" | cut -d. -f2)
+PATCH=$(echo "$CURRENT" | cut -d. -f3)
+
+# Increment patch
+NEW_PATCH=$((PATCH + 1))
+NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+# Replace version in file (BSD & GNU sed compatible)
+sed -i "s/${CURRENT}/${NEW_VERSION}/g" "$VERSION_FILE"
+
+# Stage the updated file so it's included in this commit
+git add "$VERSION_FILE"
+
+echo "[version-bump] $CURRENT → $NEW_VERSION"

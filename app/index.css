@@ -1,0 +1,418 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-heading: 'Inter', sans-serif;
+
+  /* ─── Core Colors ─── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-surface-hover: var(--surface-hover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* ─── Brand Primary (KINAU Dominant Blue #1961CC) ─── */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-border: var(--primary-border);
+  --color-primary-foreground: var(--primary-foreground);
+
+  /* ─── Brand Lighter Logo Blue (#2874E2) ─── */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* ─── Brand Gold Accent (#CCB029) ─── */
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-yellow-hover: var(--accent-yellow-hover);
+  --color-accent-yellow-subtle: var(--accent-yellow-subtle);
+  --color-accent-yellow-border: var(--accent-yellow-border);
+  --color-accent-yellow-foreground: var(--accent-yellow-foreground);
+
+  /* ─── Brand Dark Accent / Indigo (#002660) ─── */
+  --color-dark-indigo: var(--dark-indigo);
+
+  /* ─── Brand Light Accent / Taupe (#E9E3C5) ─── */
+  --color-taupe: var(--taupe);
+  --color-taupe-light: var(--taupe-light);
+
+  /* ─── Customer Portal Palette ─── */
+  --color-customer-primary: var(--customer-primary);
+  --color-customer-primary-hover: var(--customer-primary-hover);
+  --color-customer-primary-light: var(--customer-primary-light);
+  --color-customer-accent: var(--customer-accent);
+  --color-customer-accent-hover: var(--customer-accent-hover);
+  --color-customer-accent-light: var(--customer-accent-light);
+  --color-customer-bg: var(--customer-bg);
+  --color-customer-card: var(--customer-card);
+  --color-customer-card-hover: var(--customer-card-hover);
+  --color-customer-text: var(--customer-text);
+  --color-customer-text-muted: var(--customer-text-muted);
+  --color-customer-text-light: var(--customer-text-light);
+  --color-customer-border: var(--customer-border);
+  --color-customer-border-active: var(--customer-border-active);
+
+  /* ─── Status Colors ─── */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+}
+
+@layer base {
+  :root {
+    /* ─── Modern SaaS Soft Architecture Palette (BudgetBuddy Style) ─── */
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-subtle: #f9fafb;
+    --surface-hover: #f3f4f6;
+    --foreground: #111827;
+    --card: #ffffff;
+    --card-hover: #f9fafb;
+    --card-foreground: #111827;
+    --popover: #ffffff;
+    --popover-foreground: #111827;
+    
+    /* #103557 (KINAU Deep Navy Blue from /login) */
+    --primary: #103557;
+    --primary-hover: #164e78;
+    --primary-subtle: #f0f6fa;
+    --primary-border: #bfdbfe;
+    --primary-foreground: #ffffff;
+
+    --secondary: #fef9c3;
+    --secondary-hover: #fef08a;
+    --secondary-foreground: #854d0e;
+    --muted: #f9fafb;
+    --muted-foreground: #6b7280;
+
+    /* #164e78 (Lighter Navy / Accent Blue) */
+    --accent: #164e78;
+    --accent-hover: #103557;
+    --accent-subtle: #f0f6fa;
+    --accent-border: #bfdbfe;
+    --accent-foreground: #ffffff;
+
+    /* Warm Soft Gold Accent (#FEF9C3 / text #854D0E) */
+    --accent-gold: #fef9c3;
+    --accent-yellow: #fef9c3;
+    --accent-yellow-hover: #fef08a;
+    --accent-yellow-subtle: #fef9c3;
+    --accent-yellow-border: #fef08a;
+    --accent-yellow-foreground: #854d0e;
+
+    /* Dark Indigo / Neutral Headlines */
+    --dark-indigo: #111827;
+
+    /* Soft Neutral */
+    --taupe: #f3f4f6;
+    --taupe-light: #f9fafb;
+
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --input: #e5e7eb;
+    --ring: #103557;
+
+    /* ─── Sidebar / Admin (Soft Gray Sidebar + Pure White Main Canvas) ─── */
+    --sidebar: #f8fafc;
+    --sidebar-hover: #ffffff;
+    --sidebar-active: #ffffff;
+    --sidebar-active-text: #111827;
+    --sidebar-text: #6b7280;
+    --sidebar-text-muted: #9ca3af;
+    --sidebar-border: #e5e7eb;
+    --sidebar-foreground: #111827;
+    --sidebar-primary: #103557;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f0f6fa;
+    --sidebar-accent-foreground: #103557;
+    --sidebar-ring: #103557;
+
+    /* ─── Chart Colors ─── */
+    --chart-1: #103557;
+    --chart-2: #164e78;
+    --chart-3: #f59e0b;
+    --chart-4: #0f172a;
+    --chart-5: #64748b;
+
+    /* ─── Status Accents ─── */
+    --profit: #059669;
+    --profit-bg: #ecfdf5;
+    --profit-border: #a7f3d0;
+    --loss: #dc2626;
+    --loss-bg: #fef2f2;
+    --loss-border: #fecaca;
+    --warning: #d97706;
+    --warning-bg: #fef3c7;
+    --warning-border: #fde68a;
+    --info: #1d4ed8;
+    --info-bg: #eff6ff;
+    --info-border: #bfdbfe;
+
+    /* ─── Accent Yellow / Warm Soft Gold ─── */
+    --accent-yellow: #fef9c3;
+    --accent-yellow-hover: #fef08a;
+    --accent-yellow-subtle: #fef9c3;
+    --accent-yellow-border: #fef08a;
+    --accent-yellow-foreground: #854d0e;
+
+    /* ─── Border Radius System ─── */
+    --radius: 12px;
+    --radius-pill: 9999px;
+    --radius-card: 16px;
+    --radius-card-sm: 10px;
+    --radius-input: 10px;
+
+    /* ─── Semantic Status Accents ─── */
+    --profit: #10b981;
+    --profit-bg: rgba(16, 185, 129, 0.12);
+    --profit-border: rgba(16, 185, 129, 0.25);
+    --loss: #ef4444;
+    --loss-bg: rgba(239, 68, 68, 0.12);
+    --loss-border: rgba(239, 68, 68, 0.25);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.12);
+    --warning-border: rgba(245, 158, 11, 0.25);
+    --info: #0097b2;
+    --info-bg: rgba(0, 151, 178, 0.12);
+    --info-border: rgba(0, 151, 178, 0.25);
+    --purple: #8b5cf6;
+    --purple-bg: rgba(139, 92, 246, 0.12);
+    --purple-border: rgba(139, 92, 246, 0.25);
+    --progress: #0097b2;
+
+    /* Card Hover */
+    --card-border-hover: rgba(0, 151, 178, 0.4);
+
+    /* HUD Aliases */
+    --hud-cyan: #0097b2;
+    --hud-cyan-dim: rgba(0, 151, 178, 0.12);
+    --hud-blue: #0097b2;
+    --hud-blue-dim: rgba(0, 151, 178, 0.12);
+    --hud-green: #10b981;
+    --hud-red: #ef4444;
+    --hud-red-dim: rgba(239, 68, 68, 0.12);
+    --hud-amber: #f59e0b;
+  }
+
+  .dark {
+    /* ─── Main Theme Dark ─── */
+    --background: #0a1f30;
+    --surface: #103557;
+    --surface-subtle: #1b3a52;
+    --surface-hover: #24465f;
+    --foreground: #e8f1f8;
+    --card: #103557;
+    --card-hover: #1b3a52;
+    --card-foreground: #e8f1f8;
+    --popover: #103557;
+    --popover-foreground: #e8f1f8;
+    --primary: #2f6c95;
+    --primary-hover: #255a7a;
+    --primary-subtle: rgba(47, 108, 149, 0.15);
+    --primary-border: rgba(47, 108, 149, 0.3);
+    --primary-foreground: #ffffff;
+    --secondary: #1b3a52;
+    --secondary-hover: #24465f;
+    --secondary-foreground: #e8f1f8;
+    --muted: #1b3a52;
+    --muted-foreground: #9db4c7;
+    --accent: #0097b2;
+    --accent-hover: #00b4d8;
+    --accent-subtle: rgba(0, 151, 178, 0.15);
+    --accent-border: rgba(0, 151, 178, 0.3);
+    --accent-foreground: #ffffff;
+    --destructive: #f87171;
+    --destructive-foreground: #0a1f30;
+    --border: #24465f;
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --input: #2a4a63;
+    --ring: #0097b2;
+
+    /* ─── Sidebar Dark ─── */
+    --sidebar: #081622;
+    --sidebar-hover: rgba(255, 255, 255, 0.06);
+    --sidebar-active: #0097b2;
+    --sidebar-active-text: #ffffff;
+    --sidebar-text: #94a3b8;
+    --sidebar-text-muted: #64748b;
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-foreground: #e8f1f8;
+    --sidebar-primary: #2f6c95;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #1b3a52;
+    --sidebar-accent-foreground: #e8f1f8;
+    --sidebar-ring: #0097b2;
+
+    /* ─── Chart Colors Dark ─── */
+    --chart-1: #2f6c95;
+    --chart-2: #0097b2;
+    --chart-3: #4fb8cc;
+    --chart-4: #7fa8c9;
+    --chart-5: #b0d4e3;
+
+    /* ─── Customer Portal Dark ─── */
+    --customer-primary: #1e5a8a;
+    --customer-primary-hover: #164e78;
+    --customer-primary-light: rgba(30, 90, 138, 0.2);
+    --customer-accent: #0097b2;
+    --customer-accent-hover: #00b4d8;
+    --customer-accent-light: rgba(0, 151, 178, 0.15);
+    --customer-bg: #0a1f30;
+    --customer-card: #103557;
+    --customer-card-hover: #1b3a52;
+    --customer-text: #e8f1f8;
+    --customer-text-muted: #9db4c7;
+    --customer-text-light: #64748b;
+    --customer-border: #24465f;
+    --customer-border-active: rgba(0, 151, 178, 0.4);
+    --customer-success: #34d399;
+    --customer-warning: #fbbf24;
+    --customer-danger: #f87171;
+
+    /* ─── Accent Yellow Dark ─── */
+    --accent-yellow: #fbbf24;
+    --accent-yellow-hover: #f59e0b;
+    --accent-yellow-subtle: rgba(251, 191, 36, 0.15);
+    --accent-yellow-border: rgba(251, 191, 36, 0.35);
+    --accent-yellow-foreground: #0a1f30;
+
+    /* ─── Border Radius ─── */
+    --radius: 12px;
+    --radius-pill: 9999px;
+    --radius-card: 16px;
+    --radius-card-sm: 10px;
+    --radius-input: 10px;
+
+    /* ─── Semantic Status Dark ─── */
+    --profit: #34d399;
+    --profit-bg: rgba(52, 211, 153, 0.15);
+    --profit-border: rgba(52, 211, 153, 0.3);
+    --loss: #f87171;
+    --loss-bg: rgba(248, 113, 113, 0.15);
+    --loss-border: rgba(248, 113, 113, 0.3);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.15);
+    --warning-border: rgba(251, 191, 36, 0.3);
+    --info: #38bdf8;
+    --info-bg: rgba(56, 189, 248, 0.15);
+    --info-border: rgba(56, 189, 248, 0.3);
+    --purple: #a78bfa;
+    --purple-bg: rgba(167, 139, 250, 0.15);
+    --purple-border: rgba(167, 139, 250, 0.3);
+    --progress: #00b4d8;
+
+    --card-border-hover: rgba(0, 180, 216, 0.5);
+
+    /* HUD Aliases */
+    --hud-cyan: #00b4d8;
+    --hud-cyan-dim: rgba(0, 180, 216, 0.15);
+    --hud-blue: #38bdf8;
+    --hud-blue-dim: rgba(56, 189, 248, 0.15);
+    --hud-green: #34d399;
+    --hud-red: #f87171;
+    --hud-red-dim: rgba(248, 113, 113, 0.15);
+    --hud-amber: #fbbf24;
+  }
+
+  *,
+  ::after,
+  ::before {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 151, 178, 0.2) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 151, 178, 0.2);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 151, 178, 0.45);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    color: var(--foreground);
+    letter-spacing: -0.02em;
+  }
+}
+
+.hud-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  transition: border-color 0.15s ease;
+}
+
+.hud-panel:hover {
+  border-color: var(--card-border-hover);
+}
+
+.hud-panel-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
