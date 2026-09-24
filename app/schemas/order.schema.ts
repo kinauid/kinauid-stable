@@ -14,6 +14,8 @@ export const OrderItemSchema = z.object({
   order_number: z.string(),
   customer_name: z.string().min(1, 'Nama pemesan wajib diisi').default('Pelanggan Kinau'),
   customer_phone: z.string().optional().default(''),
+  pic_name: z.string().optional(),
+  pic_phone: z.string().optional(),
   institution_name: z.string().optional(),
   is_kkn: z.union([z.boolean(), z.number()]).default(false),
   kkn_type: z.string().optional(),
@@ -22,17 +24,27 @@ export const OrderItemSchema = z.object({
   kkn_year: z.union([z.string(), z.number()]).optional(),
   product_name: z.string().default('Pesanan Custom'),
   category: z.string().default('Jersey'),
+  order_type: z.string().optional(),
   total_qty: z.number().default(1),
   unit_price: z.number().default(125000),
   subtotal: z.number().default(0),
   discount: z.number().default(0),
   grand_total: z.number().default(0),
+  total_amount: z.number().optional(),
+  paid_amount: z.number().optional(),
+  dp_amount: z.number().optional(),
   status: z.string().default('pending'),
   status_printed: z.string().default('waiting'),
   payment_status: z.string().default('none'),
+  payment_method: z.string().optional(),
   payment_proof: z.string().optional(),
   dp_payment_proof: z.string().optional(),
-  created_at: z.string().default(() => new Date().toISOString().split('T')[0]),
+  payment_detail: z.any().optional(),
+  dp_payment_detail: z.any().optional(),
+  is_portfolio: z.union([z.boolean(), z.number()]).optional(),
+  images: z.any().optional(),
+  portfolio_images: z.array(z.string()).optional(),
+  created_at: z.string().optional(),
   deadline_at: z.string().optional(),
   notes: z.string().optional(),
   order_items: z.array(z.any()).optional(),
@@ -46,7 +58,7 @@ export type SizeBreakdown = z.infer<typeof SizeBreakdownSchema>;
 
 export interface OrderState {
   search?: string;
-  tab?: 'reguler' | 'kkn' | 'all';
+  tab?: 'reguler' | 'kkn' | 'portfolio' | 'all';
   year?: string;
   status?: string;
   category?: string;
@@ -54,10 +66,74 @@ export interface OrderState {
   payment_status?: string;
   status_printed?: string;
   kkn_institution?: string;
+  portfolio_only?: boolean;
   sortBy?: string;
   page?: number;
 }
 
+export const BANK_ACCOUNTS_PRESET = [
+  { id: 'bca', code: 'BCA', name: 'BCA Bisnis (Utama)', account_number: '123-456-7890', account_holder: 'PT Kinau Apparel Nusantara' },
+  { id: 'mandiri', code: 'MANDIRI', name: 'Mandiri Operasional', account_number: '987-654-3210', account_holder: 'Kinau Apparel' },
+  { id: 'bri', code: 'BRI', name: 'BRI Kas Produksi', account_number: '554-123-999', account_holder: 'Kinau ID' },
+  { id: 'bni', code: 'BNI', name: 'BNI Giro', account_number: '012-345-6789', account_holder: 'PT Kinau Apparel' },
+  { id: 'cash', code: 'CASH', name: 'Kas Tunai Workshop (Direct Cash)', account_number: 'DIRECT-CASH', account_holder: 'Kasir Kinau' },
+];
+
+export const ORDER_STATUS_BADGES: Record<string, { label: string; variant: 'primary' | 'success' | 'warning' | 'info' | 'danger' | 'outline' }> = {
+  ordered: { label: 'Pesanan Masuk', variant: 'outline' },
+  pending: { label: 'Pending', variant: 'outline' },
+  in_design: { label: 'Penyusunan Desain', variant: 'info' },
+  confirmed: { label: 'Diproses', variant: 'info' },
+  in_production: { label: 'Proses Produksi', variant: 'primary' },
+  ready_to_ship: { label: 'Siap Dikirim', variant: 'warning' },
+  completed: { label: 'Selesai & Diterima', variant: 'success' },
+  done: { label: 'Selesai', variant: 'success' },
+  cancelled: { label: 'Dibatalkan', variant: 'danger' },
+};
+
+export const PRINT_STATUS_BADGES: Record<string, { label: string; variant: 'success' | 'outline' }> = {
+  unprinted: { label: 'Belum Dicetak', variant: 'outline' },
+  waiting: { label: 'Antrean Cetak', variant: 'outline' },
+  printed: { label: 'Tercetak', variant: 'success' },
+  done: { label: 'Tercetak', variant: 'success' },
+};
+
+export const PAYMENT_STATUS_BADGES: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
+  none: { label: 'Belum Bayar', variant: 'danger' },
+  unpaid: { label: 'Belum Bayar', variant: 'danger' },
+  down_payment: { label: 'DP Terbayar', variant: 'warning' },
+  partial_dp: { label: 'DP Terbayar', variant: 'warning' },
+  paid: { label: 'Lunas', variant: 'success' },
+  refunded: { label: 'Dikembalikan', variant: 'danger' },
+};
+
+export const ORDER_STATUS_OPTIONS = [
+  { value: 'all', label: 'Semua Status Pengerjaan' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Diproses' },
+  { value: 'in_design', label: 'Penyusunan Desain' },
+  { value: 'in_production', label: 'Proses Produksi' },
+  { value: 'ready_to_ship', label: 'Siap Dikirim' },
+  { value: 'completed', label: 'Selesai' },
+  { value: 'cancelled', label: 'Dibatalkan' },
+];
+
+export const PAYMENT_STATUS_OPTIONS = [
+  { value: 'all', label: 'Semua Status Bayar' },
+  { value: 'unpaid', label: 'Belum Bayar (Unpaid)' },
+  { value: 'partial_dp', label: 'DP Terbayar (Down Payment)' },
+  { value: 'paid', label: 'Lunas (Paid in Full)' },
+];
+
+export const PRODUCT_CATEGORY_OPTIONS = [
+  { value: 'all', label: 'Semua Kategori' },
+  { value: 'Jersey', label: 'Jersey Sublimasi' },
+  { value: 'ID Card & Lanyard', label: 'ID Card & Lanyard' },
+  { value: 'Kaos Polos', label: 'Kaos Polos / Sablon' },
+  { value: 'Polo Shirt', label: 'Polo Shirt Bordir' },
+  { value: 'Jaket / Hoodie', label: 'Jaket & Hoodie' },
+  { value: 'Merchandise', label: 'Merchandise & Selempang' },
+];
 
 export const JerseyConfigSchema = z.object({
   template_id: z.string().default('tmpl-cyber-neon'),
@@ -72,43 +148,3 @@ export const JerseyConfigSchema = z.object({
 });
 
 export type JerseyConfig = z.infer<typeof JerseyConfigSchema>;
-
-export const ORDER_STATUS_BADGES: Record<string, { label: string; variant: 'primary' | 'success' | 'warning' | 'info' | 'danger' | 'outline' }> = {
-  ordered: { label: 'Pesanan Masuk', variant: 'outline' },
-  in_design: { label: 'Penyusunan Desain', variant: 'info' },
-  in_production: { label: 'Proses Produksi', variant: 'primary' },
-  ready_to_ship: { label: 'Siap Dikirim', variant: 'warning' },
-  completed: { label: 'Selesai & Diterima', variant: 'success' },
-  cancelled: { label: 'Dibatalkan', variant: 'danger' },
-};
-
-export const PRINT_STATUS_BADGES: Record<string, { label: string; variant: 'success' | 'outline' }> = {
-  unprinted: { label: 'Belum Dicetak', variant: 'outline' },
-  printed: { label: 'Tercetak', variant: 'success' },
-};
-
-export const PAYMENT_STATUS_BADGES: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' }> = {
-  unpaid: { label: 'Belum Bayar', variant: 'danger' },
-  partial_dp: { label: 'DP Terbayar', variant: 'warning' },
-  paid: { label: 'Lunas', variant: 'success' },
-};
-
-export const ORDER_STATUS_OPTIONS = [
-  { value: 'all', label: 'Semua Status Pengerjaan' },
-  { value: 'ordered', label: 'Pesanan Masuk' },
-  { value: 'in_design', label: 'Penyusunan Desain' },
-  { value: 'in_production', label: 'Proses Produksi' },
-  { value: 'ready_to_ship', label: 'Siap Dikirim' },
-  { value: 'completed', label: 'Selesai & Diterima' },
-  { value: 'cancelled', label: 'Dibatalkan' },
-];
-
-export const PRODUCT_CATEGORY_OPTIONS = [
-  { value: 'all', label: 'Semua Kategori' },
-  { value: 'Jersey', label: 'Jersey Sublimasi' },
-  { value: 'ID Card & Lanyard', label: 'ID Card & Lanyard' },
-  { value: 'Kaos Polos', label: 'Kaos Polos / Sablon' },
-  { value: 'Polo Shirt', label: 'Polo Shirt Bordir' },
-  { value: 'Jaket / Hoodie', label: 'Jaket & Hoodie' },
-  { value: 'Merchandise', label: 'Merchandise & Selempang' },
-];

@@ -147,10 +147,12 @@ export class OrderService {
         try {
           const where: Record<string, any> = { deleted_on: 'null' };
 
-          // Tab filtering: reguler (is_kkn = 0) vs KKN (is_kkn = 1)
+          // Tab filtering: reguler (is_kkn = 0) vs KKN (is_kkn = 1) vs Portfolio (is_portfolio = 1)
           if (state.tab === 'kkn') {
             where.is_kkn = 1;
-          } else if (state.tab === 'reguler' || !state.tab) {
+          } else if (state.tab === 'portfolio' || state.portfolio_only) {
+            where.is_portfolio = 1;
+          } else if (state.tab === 'reguler') {
             where.is_kkn = 0;
           }
 
@@ -196,6 +198,7 @@ export class OrderService {
               'institution_domain',
               'order_type',
               'images',
+              'is_portfolio',
               'review',
               'rating',
               'payment_status',
@@ -311,11 +314,29 @@ export class OrderService {
               let sPrinted = raw.status_printed || 'waiting';
               if (sPrinted === 'done') sPrinted = 'printed';
 
+              // Parse portfolio images
+              let portfolioImages: string[] = [];
+              if (Array.isArray(raw.images)) {
+                portfolioImages = raw.images.map(String).filter(Boolean);
+              } else if (typeof raw.images === 'string' && raw.images.trim()) {
+                try {
+                  const parsed = JSON.parse(raw.images);
+                  if (Array.isArray(parsed)) portfolioImages = parsed.map(String).filter(Boolean);
+                  else if (typeof parsed === 'string') portfolioImages = [parsed];
+                } catch {
+                  portfolioImages = raw.images.split(',').map((s: string) => s.trim()).filter(Boolean);
+                }
+              }
+
+              const dpAmount = Number(raw.dp_amount || 0);
+
               return {
                 id: String(raw.id || raw.uid || raw.order_number),
                 order_number: raw.order_number || `ORD-${raw.id}`,
                 customer_name: raw.pic_name || raw.institution_name || 'Pelanggan Kinau',
                 customer_phone: raw.pic_phone || '',
+                pic_name: raw.pic_name || '',
+                pic_phone: raw.pic_phone || '',
                 institution_name: raw.institution_name || '',
                 is_kkn: Boolean(+raw.is_kkn),
                 kkn_type: raw.kkn_type || '',
@@ -327,16 +348,26 @@ export class OrderService {
                     : raw.kkn_detail?.value || '',
                 product_name: primaryProduct,
                 category: raw.category || raw.order_type || 'Jersey',
+                order_type: raw.order_type || 'Jersey',
                 total_qty: totalQty,
                 unit_price: unitPrice,
                 subtotal,
                 discount,
                 grand_total: grandTotal,
+                total_amount: grandTotal,
+                dp_amount: dpAmount,
+                paid_amount: pStatus === 'paid' ? grandTotal : dpAmount,
                 status: sStatus,
                 status_printed: sPrinted,
                 payment_status: pStatus,
+                payment_method: raw.payment_method || undefined,
                 payment_proof: raw.payment_proof || undefined,
                 dp_payment_proof: raw.dp_payment_proof || undefined,
+                payment_detail: raw.payment_detail,
+                dp_payment_detail: raw.dp_payment_detail,
+                is_portfolio: Number(raw.is_portfolio) || (portfolioImages.length > 0 ? 1 : 0),
+                images: raw.images,
+                portfolio_images: portfolioImages,
                 created_at: raw.created_on
                   ? raw.created_on.split('T')[0]
                   : raw.order_date
@@ -367,6 +398,11 @@ export class OrderService {
               orders = orders.filter((o) =>
                 (o.institution_name || '').toLowerCase().includes(state.kkn_institution!.toLowerCase())
               );
+            }
+
+            // Client-side portfolio filter if tab is portfolio
+            if (state.tab === 'portfolio' || state.portfolio_only) {
+              orders = orders.filter((o) => Boolean(o.is_portfolio));
             }
 
             const totalCount = res?.summary?.total ?? res?.total_items ?? orders.length;
@@ -436,7 +472,7 @@ export class OrderService {
         }
 
         if (state.year) {
-          items = items.filter((o) => o.created_at.startsWith(state.year!));
+          items = items.filter((o) => (o.created_at || '').startsWith(state.year!));
         }
 
         if (state.kkn_institution) {
@@ -748,6 +784,115 @@ export class OrderService {
     return order || { id };
   }
 
+  static async updatePaymentStatus(id: string, payment_status: string, paid_amount?: number) {
+    let dbStatus = payment_status;
+    if (dbStatus === 'partial_dp') dbStatus = 'down_payment';
+    if (dbStatus === 'unpaid') dbStatus = 'none';
+
+    const dataToUpdate: Record<string, any> = {
+      payment_status: dbStatus,
+      modified_on: new Date().toISOString(),
+    };
+
+    if (paid_amount !== undefined) {
+      dataToUpdate.dp_amount = paid_amount;
+    }
+
+    try {
+      await fetch(`${BACKEND_URL}/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${INTERNAL_API_SECRET}`,
+        },
+        body: JSON.stringify({
+          table: 'orders',
+          data: dataToUpdate,
+          where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
+        }),
+      });
+    } catch {}
+
+    const order = ORDERS_DB.find((o) => o.id === id || o.order_number === id);
+    if (order) {
+      order.payment_status = payment_status;
+      if (paid_amount !== undefined) order.dp_amount = paid_amount;
+    }
+
+    invalidateCacheByTag('orders');
+    return order || { id, ...dataToUpdate };
+  }
+
+  static async togglePortfolio(id: string, is_portfolio?: number | boolean) {
+    const val = is_portfolio !== undefined ? (is_portfolio ? 1 : 0) : 1;
+    try {
+      await fetch(`${BACKEND_URL}/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${INTERNAL_API_SECRET}`,
+        },
+        body: JSON.stringify({
+          table: 'orders',
+          data: {
+            is_portfolio: val,
+            modified_on: new Date().toISOString(),
+          },
+          where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
+        }),
+      });
+    } catch {}
+
+    const order = ORDERS_DB.find((o) => o.id === id || o.order_number === id);
+    if (order) {
+      order.is_portfolio = val;
+    }
+
+    invalidateCacheByTag('orders');
+    return order || { id, is_portfolio: val };
+  }
+
+  static async updatePortfolio(id: string, payload: { is_portfolio?: number | boolean; images?: string[] | string }) {
+    const dataToUpdate: Record<string, any> = {
+      modified_on: new Date().toISOString(),
+    };
+
+    if (payload.is_portfolio !== undefined) {
+      dataToUpdate.is_portfolio = payload.is_portfolio ? 1 : 0;
+    }
+
+    if (payload.images !== undefined) {
+      dataToUpdate.images = Array.isArray(payload.images) ? JSON.stringify(payload.images) : payload.images;
+    }
+
+    try {
+      await fetch(`${BACKEND_URL}/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${INTERNAL_API_SECRET}`,
+        },
+        body: JSON.stringify({
+          table: 'orders',
+          data: dataToUpdate,
+          where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
+        }),
+      });
+    } catch {}
+
+    const order = ORDERS_DB.find((o) => o.id === id || o.order_number === id);
+    if (order) {
+      if (payload.is_portfolio !== undefined) order.is_portfolio = payload.is_portfolio ? 1 : 0;
+      if (payload.images !== undefined) {
+        order.images = payload.images;
+        order.portfolio_images = Array.isArray(payload.images) ? payload.images : [];
+      }
+    }
+
+    invalidateCacheByTag('orders');
+    return order || { id, ...dataToUpdate };
+  }
+
   static async deleteOrder(id: string) {
     try {
       await fetch(`${BACKEND_URL}/update`, {
@@ -886,7 +1031,21 @@ export async function handleOrderAction({ request }: ActionFunctionArgs) {
         return successResponse(updated, { meta: { message: 'Bukti pembayaran berhasil disimpan' } });
       },
 
-      // 6. Delete Payment Proof (from kinauid-frontend actionType === 'delete_payment_proof')
+      // 6. Update Payment Status (Quick status toggle: unpaid -> dp -> paid)
+      update_payment_status: async () => {
+        const payment_status = String(formData.get('payment_status') || 'paid');
+        const paid_amount = formData.get('paid_amount') ? Number(formData.get('paid_amount')) : undefined;
+        const updated = await OrderService.updatePaymentStatus(id, payment_status, paid_amount);
+        return successResponse(updated, { meta: { message: 'Status pembayaran berhasil diperbarui' } });
+      },
+      'update-payment-status': async () => {
+        const payment_status = String(formData.get('payment_status') || 'paid');
+        const paid_amount = formData.get('paid_amount') ? Number(formData.get('paid_amount')) : undefined;
+        const updated = await OrderService.updatePaymentStatus(id, payment_status, paid_amount);
+        return successResponse(updated, { meta: { message: 'Status pembayaran berhasil diperbarui' } });
+      },
+
+      // 7. Delete Payment Proof (from kinauid-frontend actionType === 'delete_payment_proof')
       delete_payment_proof: async () => {
         const field = String(formData.get('field') || 'payment_proof');
         const updated = await OrderService.deletePaymentProof(id, field);
@@ -898,7 +1057,57 @@ export async function handleOrderAction({ request }: ActionFunctionArgs) {
         return successResponse(updated, { meta: { message: 'Bukti pembayaran berhasil dihapus' } });
       },
 
-      // 7. Create New Order (from kinauid-frontend intent === 'create_order')
+      // 8. Toggle Portfolio Showcase
+      toggle_portfolio: async () => {
+        const is_portfolio = formData.get('is_portfolio') === 'true' || formData.get('is_portfolio') === '1';
+        const updated = await OrderService.togglePortfolio(id, is_portfolio);
+        return successResponse(updated, {
+          meta: { message: is_portfolio ? 'Pesanan dimasukkan ke portofolio showcase' : 'Pesanan dikeluarkan dari portofolio showcase' },
+        });
+      },
+      'toggle-portfolio': async () => {
+        const is_portfolio = formData.get('is_portfolio') === 'true' || formData.get('is_portfolio') === '1';
+        const updated = await OrderService.togglePortfolio(id, is_portfolio);
+        return successResponse(updated, {
+          meta: { message: is_portfolio ? 'Pesanan dimasukkan ke portofolio showcase' : 'Pesanan dikeluarkan dari portofolio showcase' },
+        });
+      },
+
+      // 9. Update Portfolio (Images & Showcase toggle)
+      update_portfolio: async () => {
+        const is_portfolio = formData.has('is_portfolio')
+          ? formData.get('is_portfolio') === 'true' || formData.get('is_portfolio') === '1'
+          : undefined;
+        const imagesRaw = formData.get('images') ? String(formData.get('images')) : undefined;
+        let images: string[] | undefined = undefined;
+        if (imagesRaw) {
+          try {
+            images = JSON.parse(imagesRaw);
+          } catch {
+            images = imagesRaw.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+        }
+        const updated = await OrderService.updatePortfolio(id, { is_portfolio, images });
+        return successResponse(updated, { meta: { message: 'Data portofolio pesanan berhasil diperbarui' } });
+      },
+      'update-portfolio': async () => {
+        const is_portfolio = formData.has('is_portfolio')
+          ? formData.get('is_portfolio') === 'true' || formData.get('is_portfolio') === '1'
+          : undefined;
+        const imagesRaw = formData.get('images') ? String(formData.get('images')) : undefined;
+        let images: string[] | undefined = undefined;
+        if (imagesRaw) {
+          try {
+            images = JSON.parse(imagesRaw);
+          } catch {
+            images = imagesRaw.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+        }
+        const updated = await OrderService.updatePortfolio(id, { is_portfolio, images });
+        return successResponse(updated, { meta: { message: 'Data portofolio pesanan berhasil diperbarui' } });
+      },
+
+      // 10. Create New Order (from kinauid-frontend intent === 'create_order')
       create_order: async () => {
         const customer_name = String(formData.get('customer_name') || '');
         const customer_phone = String(formData.get('customer_phone') || '');
@@ -964,7 +1173,7 @@ export async function handleOrderAction({ request }: ActionFunctionArgs) {
         return successResponse(created, { meta: { message: 'Pesanan baru berhasil dibuat' } });
       },
 
-      // 8. Save Jersey Customizer Config
+      // 11. Save Jersey Customizer Config
       'save-config': async () => {
         const template_id = String(formData.get('template_id') || 'tmpl-cyber-neon');
         const fabric = String(formData.get('fabric') || 'Dryfit Milano');

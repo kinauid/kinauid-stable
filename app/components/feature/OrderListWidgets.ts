@@ -22,12 +22,15 @@ import { ADMIN_WA, getWhatsAppLink } from '~/constants/brand';
 import {
   type OrderItem,
   type OrderState,
+  BANK_ACCOUNTS_PRESET,
   ORDER_STATUS_BADGES,
   PAYMENT_STATUS_BADGES,
   PRINT_STATUS_BADGES,
   ORDER_STATUS_OPTIONS,
+  PAYMENT_STATUS_OPTIONS,
   PRODUCT_CATEGORY_OPTIONS,
 } from '~/schemas/order.schema';
+import { getResourceUrl } from '~/utils/resource';
 
 // ============================================================================
 // Order Tabs Config (BAAK / Kinau Style)
@@ -36,6 +39,7 @@ import {
 export const ORDER_TABS: TableTabItem[] = [
   { key: 'reguler', label: 'Pesanan Reguler', icon: 'Building2' },
   { key: 'kkn', label: 'Pesanan KKN / Kampus', icon: 'GraduationCap' },
+  { key: 'portfolio', label: 'Portofolio Showcase', icon: 'Sparkles' },
   { key: 'all', label: 'Semua Pesanan', icon: 'Layers' },
 ];
 
@@ -115,7 +119,7 @@ export function getActiveFilterBadges(
 }
 
 // ============================================================================
-// Order Filter Modal (Exact match to kinauid-frontend OrderFilterModal.tsx)
+// Order Filter Modal
 // ============================================================================
 
 export function OrderFilterModal({
@@ -131,7 +135,7 @@ export function OrderFilterModal({
   filters: OrderState;
   onApply: (f: Partial<OrderState>) => void;
   onReset: () => void;
-  viewMode?: 'reguler' | 'kkn' | 'all';
+  viewMode?: string;
 }) {
   const [tempFilters, setTempFilters] = useState<Partial<OrderState>>({ ...filters });
 
@@ -189,12 +193,7 @@ export function OrderFilterModal({
             value: tempFilters.status || 'all',
             onChange: (e: any) => setTempFilters({ ...tempFilters, status: e.target.value }),
           },
-          createElement('option', { value: 'all' }, 'Semua Status'),
-          createElement('option', { value: 'pending' }, 'Pending'),
-          createElement('option', { value: 'confirmed' }, 'Diproses'),
-          createElement('option', { value: 'in_production' }, 'Produksi'),
-          createElement('option', { value: 'completed' }, 'Selesai'),
-          createElement('option', { value: 'cancelled' }, 'Dibatalkan')
+          ORDER_STATUS_OPTIONS.map((opt) => createElement('option', { key: opt.value, value: opt.value }, opt.label))
         )
       ),
 
@@ -210,10 +209,7 @@ export function OrderFilterModal({
             value: tempFilters.payment_status || 'all',
             onChange: (e: any) => setTempFilters({ ...tempFilters, payment_status: e.target.value }),
           },
-          createElement('option', { value: 'all' }, 'Semua Status Bayar'),
-          createElement('option', { value: 'paid' }, 'Lunas'),
-          createElement('option', { value: 'partial_dp' }, 'DP (Down Payment)'),
-          createElement('option', { value: 'unpaid' }, 'Belum Bayar')
+          PAYMENT_STATUS_OPTIONS.map((opt) => createElement('option', { key: opt.value, value: opt.value }, opt.label))
         )
       ),
 
@@ -304,10 +300,10 @@ export function OrderCustomerCell(order: OrderItem) {
   const kknDetail = safeParseObject(order.kkn_detail);
   const kknVal = kknDetail?.value ?? (typeof order.kkn_detail === 'string' ? order.kkn_detail : '');
 
-  const phoneVal = String(order.customer_phone || order.pic_phone || ADMIN_WA);
+  const phoneVal = String(order.pic_phone || order.customer_phone || ADMIN_WA);
   const waUrl = getWhatsAppLink(
     phoneVal,
-    `Halo ${String(order.customer_name || order.pic_name || '')}, saya ingin bertanya tentang pemesanan ${order.order_number}`
+    `Halo ${String(order.pic_name || order.customer_name || '')}, saya ingin bertanya tentang pemesanan ${order.order_number}`
   );
 
   return createElement(
@@ -362,7 +358,7 @@ export function OrderCustomerCell(order: OrderItem) {
         isKkn && order.institution_name ? `${order.institution_name} ${order.kkn_year || ''} -` : ''
       ),
       createElement('span', null, String(order.pic_name || order.customer_name || '-')),
-      (order.customer_phone || order.pic_phone)
+      (order.pic_phone || order.customer_phone)
         ? createElement(
             'a',
             {
@@ -374,6 +370,47 @@ export function OrderCustomerCell(order: OrderItem) {
             `(${String(order.pic_phone || order.customer_phone)})`
           )
         : null
+    )
+  );
+}
+
+// ============================================================================
+// Order Product List Cell (Detail Daftar Produk & Varian)
+// ============================================================================
+
+export function OrderProductListCell(order: OrderItem) {
+  const items = Array.isArray(order.order_items) && order.order_items.length > 0 ? order.order_items : [];
+
+  if (items.length === 0) {
+    return createElement(
+      'div',
+      { className: 'py-1 space-y-0.5' },
+      createElement('div', { className: 'font-medium text-xs text-slate-900 break-words' }, order.product_name),
+      createElement('span', { className: 'text-[10px] font-medium text-slate-500' }, order.category || 'Standar')
+    );
+  }
+
+  return createElement(
+    'div',
+    { className: 'py-1 space-y-1 max-w-[200px]' },
+    items.map((it: any, idx: number) =>
+      createElement(
+        'div',
+        { key: idx, className: 'flex items-start justify-between gap-1.5 text-xs pb-1 border-b border-slate-100 last:border-0 last:pb-0' },
+        createElement(
+          'div',
+          { className: 'min-w-0' },
+          createElement('div', { className: 'font-semibold text-slate-900 truncate' }, it.product_name || order.product_name),
+          it.variant_name
+            ? createElement('span', { className: 'text-[10px] text-slate-500 block truncate' }, it.variant_name)
+            : null
+        ),
+        createElement(
+          'span',
+          { className: 'text-[10px] font-bold text-[#103557] bg-slate-100 px-1.5 py-0.5 rounded shrink-0' },
+          `${it.qty || 1} pcs`
+        )
+      )
     )
   );
 }
@@ -425,23 +462,12 @@ export function OrderDriveLinksCell(order: OrderItem) {
 }
 
 // ============================================================================
-// Order Payment Proof Cell (Exact match to kinauid-frontend order-columns.tsx)
+// Order Payment Proof Cell
 // ============================================================================
 
 export function OrderPaymentProofCell(order: OrderItem, send: any) {
   const hasDpProof = Boolean(order.dp_payment_proof && order.dp_payment_proof.trim() !== '');
   const hasPaidProof = Boolean(order.payment_proof && order.payment_proof.trim() !== '');
-
-  const canUploadDp =
-    (order.payment_status === 'partial_dp' || order.payment_status === 'down_payment' || order.payment_status === 'none' || order.payment_status === 'unpaid') &&
-    !hasDpProof;
-
-  const canUploadPaid =
-    ((order.payment_status === 'partial_dp' && !hasDpProof) ||
-      (hasDpProof && !order.payment_proof) ||
-      (order.payment_status === 'paid' && !hasPaidProof) ||
-      order.payment_status === 'none' ||
-      order.payment_status === 'unpaid');
 
   const openUploadModal = (source: 'down_payment' | 'paid') => {
     modals.open('UPLOAD_PAYMENT_PROOF_MODAL', {
@@ -457,14 +483,15 @@ export function OrderPaymentProofCell(order: OrderItem, send: any) {
       order,
       onDeleteProof: (field: string) =>
         send.submit({ intent: 'delete-payment-proof', id: order.id, field }, { method: 'post' }),
+      onUpdateStatus: (payment_status: string) =>
+        send.submit({ intent: 'update-payment-status', id: order.id, payment_status }, { method: 'post' }),
     });
   };
 
   const buttonBase =
     'w-full flex items-center justify-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold border transition-colors cursor-pointer';
   const activeBtn = 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 shadow-2xs';
-  const disabledBtn = 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed';
-  const successBtn = 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold';
+  const successBtn = 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold hover:bg-emerald-100';
 
   return createElement(
     'div',
@@ -474,12 +501,11 @@ export function OrderPaymentProofCell(order: OrderItem, send: any) {
       'button',
       {
         type: 'button',
-        disabled: !canUploadDp && !hasDpProof,
         onClick: () => (hasDpProof ? openViewModal() : openUploadModal('down_payment')),
-        className: `${buttonBase} ${hasDpProof ? successBtn : canUploadDp ? activeBtn : disabledBtn}`,
+        className: `${buttonBase} ${hasDpProof ? successBtn : activeBtn}`,
       },
       hasDpProof ? Icon('Check', { className: 'w-3 h-3 text-emerald-600' }) : Icon('Upload', { className: 'w-3 h-3 text-slate-500' }),
-      'Upload Bukti Bayar (DP)'
+      hasDpProof ? 'Bukti DP Terunggah' : 'Upload Bukti Bayar (DP)'
     ),
 
     // 2. Upload Bukti Lunas
@@ -487,12 +513,11 @@ export function OrderPaymentProofCell(order: OrderItem, send: any) {
       'button',
       {
         type: 'button',
-        disabled: !canUploadPaid && !hasPaidProof,
         onClick: () => (hasPaidProof ? openViewModal() : openUploadModal('paid')),
-        className: `${buttonBase} ${hasPaidProof ? successBtn : canUploadPaid ? activeBtn : disabledBtn}`,
+        className: `${buttonBase} ${hasPaidProof ? successBtn : activeBtn}`,
       },
       hasPaidProof ? Icon('Check', { className: 'w-3 h-3 text-emerald-600' }) : Icon('Upload', { className: 'w-3 h-3 text-slate-500' }),
-      'Upload Bukti Bayar (LUNAS)'
+      hasPaidProof ? 'Bukti Lunas Terunggah' : 'Upload Bukti (LUNAS)'
     ),
 
     // 3. Lihat Bukti Link
@@ -513,7 +538,67 @@ export function OrderPaymentProofCell(order: OrderItem, send: any) {
 }
 
 // ============================================================================
-// Order Columns Definition (Matching kinauid-frontend order-columns.tsx)
+// Order Portfolio Cell (Showcase Toggle & Photos Preview)
+// ============================================================================
+
+export function OrderPortfolioCell(order: OrderItem, send: any) {
+  const isPortfolio = Boolean(order.is_portfolio);
+  const images = Array.isArray(order.portfolio_images) ? order.portfolio_images : [];
+
+  const handleToggle = () => {
+    send.submit(
+      {
+        intent: 'toggle-portfolio',
+        id: order.id,
+        is_portfolio: isPortfolio ? '0' : '1',
+      },
+      { method: 'post' }
+    );
+  };
+
+  const handleOpenPortfolioModal = () => {
+    modals.open('ORDER_PORTFOLIO_MODAL', {
+      order,
+      onSubmit: (payload: any) =>
+        send.submit({ intent: 'update-portfolio', id: order.id, ...payload }, { method: 'post' }),
+    });
+  };
+
+  return createElement(
+    'div',
+    { className: 'flex flex-col items-center gap-1 py-1' },
+    createElement(
+      'button',
+      {
+        type: 'button',
+        onClick: handleToggle,
+        title: isPortfolio ? 'Hapus dari Portofolio' : 'Tampilkan di Portofolio',
+        className: `inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+          isPortfolio
+            ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 shadow-2xs'
+            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+        }`,
+      },
+      Icon(isPortfolio ? 'Star' : 'Star', {
+        className: `w-3 h-3 ${isPortfolio ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`
+      }),
+      isPortfolio ? 'Showcase' : 'Jadikan Portofolio'
+    ),
+    createElement(
+      'button',
+      {
+        type: 'button',
+        onClick: handleOpenPortfolioModal,
+        className: 'text-[10px] text-slate-600 hover:text-blue-700 hover:underline flex items-center gap-1 font-semibold cursor-pointer',
+      },
+      Icon('Camera', { className: 'w-2.5 h-2.5' }),
+      images.length > 0 ? `${images.length} Foto Siap` : 'Kelola Foto'
+    )
+  );
+}
+
+// ============================================================================
+// Order Columns Definition
 // ============================================================================
 
 export function createOrderTableColumns(send: any, navigate?: (path: string) => void): DataTableCardColumn<OrderItem>[] {
@@ -532,67 +617,28 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
       cell: (row) => OrderCustomerCell(row),
     },
     {
-      key: 'jenisPesanan',
-      header: 'Nama Item',
-      minWidth: '140px',
-      cell: (row) => {
-        if (Array.isArray(row.order_items) && row.order_items.length > 0) {
-          return createElement(
-            'ul',
-            { className: 'list-disc list-inside text-xs text-slate-800 space-y-0.5' },
-            row.order_items.map((it: any, i: number) =>
-              createElement('li', { key: i, className: 'truncate max-w-[180px]' }, it.product_name || row.product_name)
-            )
-          );
-        }
-        return createElement('span', { className: 'text-xs font-medium text-slate-800' }, row.product_name);
-      },
-    },
-    {
-      key: 'item_variant',
-      header: 'Varian Item',
-      width: '120px',
-      cell: (row) => {
-        if (Array.isArray(row.order_items) && row.order_items.length > 0) {
-          return createElement(
-            'ul',
-            { className: 'list-disc list-inside text-xs text-slate-600 space-y-0.5' },
-            row.order_items.map((it: any, i: number) =>
-              createElement('li', { key: i, className: 'truncate max-w-[140px]' }, it.variant_name || row.category || 'Standar')
-            )
-          );
-        }
-        return createElement('span', { className: 'text-xs text-slate-600' }, row.category || 'Standar');
-      },
+      key: 'daftar_produk',
+      header: 'Daftar Produk & Varian',
+      minWidth: '180px',
+      cell: (row) => OrderProductListCell(row),
     },
     {
       key: 'jumlah',
       header: 'Jumlah',
       width: '75px',
       center: true,
-      cell: (row) => {
-        if (Array.isArray(row.order_items) && row.order_items.length > 0) {
-          return createElement(
-            'div',
-            { className: 'space-y-0.5 text-center' },
-            row.order_items.map((it: any, i: number) =>
-              createElement('div', { key: i, className: 'text-xs font-bold text-slate-900' }, `${it.qty || 1} pcs`)
-            )
-          );
-        }
-        return createElement('span', { className: 'text-xs font-bold text-slate-900' }, `${row.total_qty} pcs`);
-      },
+      cell: (row) => createElement('span', { className: 'text-xs font-bold text-slate-900' }, `${row.total_qty} pcs`),
     },
     {
       key: 'deadline',
       header: 'Deadline',
-      width: '100px',
+      width: '95px',
       cell: (row) => createElement('span', { className: 'text-xs text-slate-600 font-medium' }, row.deadline_at || '-'),
     },
     {
       key: 'totalAmount',
       header: 'Total Bayar',
-      width: '130px',
+      width: '135px',
       cell: (row) => {
         const pBadge = PAYMENT_STATUS_BADGES[row.payment_status] || { label: row.payment_status, variant: 'danger' };
         return createElement(
@@ -616,10 +662,17 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
       },
     },
     {
-      key: 'link',
-      header: 'Folder Drive',
-      minWidth: '140px',
-      cell: (row) => OrderDriveLinksCell(row),
+      key: 'statusPembayaran',
+      header: 'Status Pembayaran',
+      width: '190px',
+      cell: (row) => OrderPaymentProofCell(row, send),
+    },
+    {
+      key: 'portofolio',
+      header: 'Portofolio',
+      width: '135px',
+      center: true,
+      cell: (row) => OrderPortfolioCell(row, send),
     },
     {
       key: 'statusPengerjaan',
@@ -639,12 +692,6 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
           )
         );
       },
-    },
-    {
-      key: 'statusPembayaran',
-      header: 'Status Pembayaran',
-      width: '190px',
-      cell: (row) => OrderPaymentProofCell(row, send),
     },
     {
       key: 'status_printed',
@@ -686,6 +733,12 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
         ),
     },
     {
+      key: 'link',
+      header: 'Folder Drive',
+      minWidth: '130px',
+      cell: (row) => OrderDriveLinksCell(row),
+    },
+    {
       key: 'aksi',
       header: 'Aksi',
       width: '120px',
@@ -703,11 +756,15 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
             },
           }),
           createElement(TableActionButton, {
-            icon: 'Pencil',
-            title: 'Edit Pesanan',
-            variant: 'primary',
+            icon: 'Camera',
+            title: 'Portofolio',
+            variant: 'info',
             onClick: () => {
-              if (navigate) navigate(`/app/order-manage?id=${row.id}`);
+              modals.open('ORDER_PORTFOLIO_MODAL', {
+                order: row,
+                onSubmit: (payload: any) =>
+                  send.submit({ intent: 'update-portfolio', id: row.id, ...payload }, { method: 'post' }),
+              });
             },
           }),
           createElement(TableActionButton, {
@@ -726,13 +783,18 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
 }
 
 // ============================================================================
-// Modals: UploadPaymentProofModal, ViewPaymentProofModal, ViewNotaModal
+// Modals: UploadPaymentProofModal, ViewPaymentProofModal, ZoomProofModal, OrderPortfolioModal, ViewNotaModal
 // ============================================================================
 
 export function UploadPaymentProofModal({ open, onClose, order, sourceUpload = 'down_payment', onSubmit }: any) {
   const [targetBank, setTargetBank] = useState<string>('bca');
   const [proofUrl, setProofUrl] = useState<string>('/capkinau.png');
-  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [paidAmount, setPaidAmount] = useState<number>(() => {
+    if (sourceUpload === 'down_payment') {
+      return order?.dp_amount || Math.round((order?.grand_total || 0) * 0.5);
+    }
+    return order?.grand_total || 0;
+  });
 
   if (!open || !order) return null;
 
@@ -743,6 +805,7 @@ export function UploadPaymentProofModal({ open, onClose, order, sourceUpload = '
       dp_payment_proof: sourceUpload === 'down_payment' ? proofUrl : undefined,
       payment_method: targetBank,
       payment_status: sourceUpload === 'paid' ? 'paid' : 'down_payment',
+      paid_amount: paidAmount,
       source_upload: sourceUpload,
     });
     onClose();
@@ -789,11 +852,25 @@ export function UploadPaymentProofModal({ open, onClose, order, sourceUpload = '
             value: targetBank,
             onChange: (e: any) => setTargetBank(e.target.value),
           },
-          createElement('option', { value: 'bca' }, 'BCA Bisnis (123-456-7890 a/n PT Kinau Apparel)'),
-          createElement('option', { value: 'mandiri' }, 'Mandiri Operasional (987-654-3210 a/n Kinau)'),
-          createElement('option', { value: 'bri' }, 'BRI Kas Produksi (554-123-999 a/n Kinau ID)'),
-          createElement('option', { value: 'cash' }, 'Kas Tunai Workshop (Direct Cash)')
+          BANK_ACCOUNTS_PRESET.map((bank) =>
+            createElement('option', { key: bank.id, value: bank.id }, `${bank.name} (${bank.account_number})`)
+          )
         )
+      ),
+
+      // Nominal Pembayaran
+      createElement(
+        'div',
+        { className: 'space-y-1.5' },
+        createElement('label', { className: 'block text-xs font-bold text-slate-700' }, 'Nominal Ditransfer (Rp)'),
+        createElement('input', {
+          type: 'number',
+          value: paidAmount,
+          onChange: (e: any) => setPaidAmount(Number(e.target.value) || 0),
+          className:
+            'w-full border border-slate-300 rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-[#103557] outline-none font-bold text-slate-900',
+          required: true,
+        })
       ),
 
       // Upload Input
@@ -814,7 +891,7 @@ export function UploadPaymentProofModal({ open, onClose, order, sourceUpload = '
             }
           },
         }),
-        createElement('p', { className: 'text-[11px] text-slate-500' }, 'Format JPG, PNG, atau WebP maks. 5MB.')
+        createElement('p', { className: 'text-[11px] text-slate-500' }, 'Format JPG, PNG, atau WebP.')
       ),
 
       // Live Image Preview
@@ -852,20 +929,67 @@ export function UploadPaymentProofModal({ open, onClose, order, sourceUpload = '
   );
 }
 
-export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: any) {
+export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof, onUpdateStatus }: any) {
   if (!open || !order) return null;
 
   return Modal(
     {
       open,
       onClose,
-      title: `Bukti Pembayaran #${order.order_number}`,
-      description: `Lampiran bukti transfer untuk ${order.institution_name || order.customer_name}.`,
+      title: `Verifikasi Bukti Pembayaran #${order.order_number}`,
+      description: `Lampiran bukti transfer & status pembayaran untuk ${order.institution_name || order.customer_name}.`,
       size: 'lg',
     },
     createElement(
       'div',
       { className: 'space-y-4 pt-1' },
+      // Quick Status Approver Toolbar
+      createElement(
+        'div',
+        { className: 'p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-4 flex-wrap' },
+        createElement(
+          'div',
+          null,
+          createElement('span', { className: 'text-xs text-slate-500 font-medium block' }, 'Status Pembayaran Saat Ini:'),
+          createElement(
+            'span',
+            {
+              className: `inline-block px-2 py-0.5 rounded text-xs font-bold mt-0.5 ${
+                order.payment_status === 'paid'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : order.payment_status === 'down_payment' || order.payment_status === 'partial_dp'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-rose-100 text-rose-800'
+              }`,
+            },
+            PAYMENT_STATUS_BADGES[order.payment_status]?.label || order.payment_status
+          )
+        ),
+        createElement(
+          'div',
+          { className: 'flex items-center gap-2' },
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () => onUpdateStatus?.('down_payment'),
+              className: 'px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold cursor-pointer transition-colors',
+            },
+            'Set Status DP'
+          ),
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () => onUpdateStatus?.('paid'),
+              className: 'px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-2xs cursor-pointer transition-colors',
+            },
+            'Verifikasi LUNAS'
+          )
+        )
+      ),
+
+      // Dual Proof Cards
       createElement(
         'div',
         { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
@@ -887,7 +1011,6 @@ export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: a
                         name: 'Bukti Pembayaran DP',
                         onConfirm: () => {
                           onDeleteProof?.('dp_payment_proof');
-                          onClose();
                         },
                       });
                     },
@@ -898,9 +1021,13 @@ export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: a
               ),
               createElement(
                 'div',
-                { className: 'w-full h-56 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden p-2' },
-                createElement('img', { src: order.dp_payment_proof, alt: 'Bukti DP', className: 'max-h-full max-w-full object-contain' })
-              )
+                {
+                  onClick: () => modals.open('ZOOM_PROOF_MODAL', { proofUrl: getResourceUrl(order.dp_payment_proof), title: 'Bukti DP' }),
+                  className: 'w-full h-56 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden p-2 cursor-zoom-in hover:border-slate-400 transition-colors',
+                },
+                createElement('img', { src: getResourceUrl(order.dp_payment_proof), alt: 'Bukti DP', className: 'max-h-full max-w-full object-contain' })
+              ),
+              createElement('p', { className: 'text-[10px] text-center text-slate-500' }, 'Klik gambar untuk memperbesar')
             )
           : null,
 
@@ -922,7 +1049,6 @@ export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: a
                         name: 'Bukti Pelunasan',
                         onConfirm: () => {
                           onDeleteProof?.('payment_proof');
-                          onClose();
                         },
                       });
                     },
@@ -933,12 +1059,17 @@ export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: a
               ),
               createElement(
                 'div',
-                { className: 'w-full h-56 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden p-2' },
-                createElement('img', { src: order.payment_proof, alt: 'Bukti Lunas', className: 'max-h-full max-w-full object-contain' })
-              )
+                {
+                  onClick: () => modals.open('ZOOM_PROOF_MODAL', { proofUrl: getResourceUrl(order.payment_proof), title: 'Bukti Pelunasan' }),
+                  className: 'w-full h-56 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden p-2 cursor-zoom-in hover:border-slate-400 transition-colors',
+                },
+                createElement('img', { src: getResourceUrl(order.payment_proof), alt: 'Bukti Lunas', className: 'max-h-full max-w-full object-contain' })
+              ),
+              createElement('p', { className: 'text-[10px] text-center text-slate-500' }, 'Klik gambar untuk memperbesar')
             )
           : null
       ),
+
       createElement(
         'div',
         { className: 'flex justify-end pt-3 border-t border-slate-100' },
@@ -955,6 +1086,218 @@ export function ViewPaymentProofModal({ open, onClose, order, onDeleteProof }: a
     )
   );
 }
+
+export function ZoomProofModal({ open, onClose, proofUrl, title = 'Bukti Pembayaran' }: any) {
+  if (!open || !proofUrl) return null;
+
+  return Modal(
+    {
+      open,
+      onClose,
+      title: title,
+      description: 'Pratinjau resolusi penuh bukti transfer.',
+      size: 'xl',
+    },
+    createElement(
+      'div',
+      { className: 'space-y-4 pt-1' },
+      createElement(
+        'div',
+        { className: 'w-full max-h-[70vh] bg-slate-900 rounded-xl flex items-center justify-center p-2 overflow-auto' },
+        createElement('img', { src: proofUrl, alt: 'Zoom Bukti', className: 'max-h-[65vh] max-w-full object-contain rounded' })
+      ),
+      createElement(
+        'div',
+        { className: 'flex items-center justify-between pt-2' },
+        createElement(
+          'a',
+          {
+            href: proofUrl,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            className: 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline',
+          },
+          Icon('ExternalLink', { className: 'w-3.5 h-3.5' }),
+          'Buka di Tab Baru'
+        ),
+        createElement(
+          'button',
+          {
+            type: 'button',
+            onClick: onClose,
+            className: 'px-4 py-2 bg-[#103557] text-white rounded-lg text-xs font-bold hover:bg-[#0c2842] cursor-pointer',
+          },
+          'Tutup'
+        )
+      )
+    )
+  );
+}
+
+// ============================================================================
+// Order Portfolio Showcase Modal
+// ============================================================================
+
+export function OrderPortfolioModal({ open, onClose, order, onSubmit }: any) {
+  const [isPortfolio, setIsPortfolio] = useState<boolean>(() => Boolean(order?.is_portfolio));
+  const [images, setImages] = useState<string[]>(() => {
+    if (Array.isArray(order?.portfolio_images)) return [...order.portfolio_images];
+    return [];
+  });
+  const [newImageUrl, setNewImageUrl] = useState<string>('');
+
+  if (!open || !order) return null;
+
+  const handleAddImage = () => {
+    if (newImageUrl.trim()) {
+      setImages([...images, newImageUrl.trim()]);
+      setNewImageUrl('');
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: any) => {
+    e.preventDefault();
+    onSubmit?.({
+      is_portfolio: isPortfolio ? '1' : '0',
+      images: JSON.stringify(images),
+    });
+    onClose();
+  };
+
+  return Modal(
+    {
+      open,
+      onClose,
+      title: `Portofolio Showcase #${order.order_number}`,
+      description: 'Kelola foto dokumentasi hasil produksi untuk ditampilkan di portofolio publik.',
+      size: 'md',
+    },
+    createElement(
+      'form',
+      { onSubmit: handleSubmit, className: 'space-y-4 pt-1' },
+      // Toggle Switch
+      createElement(
+        'div',
+        { className: 'p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between' },
+        createElement(
+          'div',
+          null,
+          createElement('h4', { className: 'text-xs font-bold text-slate-900' }, 'Tampilkan di Portofolio Publik'),
+          createElement('p', { className: 'text-[11px] text-slate-500' }, 'Aktifkan agar hasil pesanan ini muncul di halaman showcase & katalog web.')
+        ),
+        createElement('input', {
+          type: 'checkbox',
+          checked: isPortfolio,
+          onChange: (e: any) => setIsPortfolio(e.target.checked),
+          className: 'w-5 h-5 accent-[#103557] rounded cursor-pointer',
+        })
+      ),
+
+      // Input Add Photo URL / Upload
+      createElement(
+        'div',
+        { className: 'space-y-2' },
+        createElement('label', { className: 'block text-xs font-bold text-slate-700' }, 'Tambah Foto Hasil Produksi'),
+        createElement(
+          'div',
+          { className: 'flex gap-2' },
+          createElement('input', {
+            type: 'text',
+            placeholder: 'https://.../foto-produk.jpg atau nama file',
+            value: newImageUrl,
+            onChange: (e: any) => setNewImageUrl(e.target.value),
+            className: 'flex-1 border border-slate-300 rounded-lg p-2 text-xs bg-white focus:ring-1 focus:ring-[#103557] outline-none',
+          }),
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: handleAddImage,
+              className: 'px-3 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 cursor-pointer',
+            },
+            'Tambah'
+          )
+        ),
+        createElement(
+          'div',
+          null,
+          createElement('input', {
+            type: 'file',
+            accept: 'image/*',
+            className: 'w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-[#103557] cursor-pointer',
+            onChange: (e: any) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const url = URL.createObjectURL(file);
+                setImages([...images, url]);
+              }
+            },
+          })
+        )
+      ),
+
+      // Gallery Grid
+      createElement(
+        'div',
+        { className: 'space-y-1.5' },
+        createElement('label', { className: 'block text-xs font-bold text-slate-700' }, `Galeri Foto (${images.length})`),
+        images.length === 0
+          ? createElement('div', { className: 'p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300' }, 'Belum ada foto portofolio.')
+          : createElement(
+              'div',
+              { className: 'grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1' },
+              images.map((imgUrl, i) =>
+                createElement(
+                  'div',
+                  { key: i, className: 'relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-100 aspect-square' },
+                  createElement('img', { src: getResourceUrl(imgUrl), alt: `Foto ${i + 1}`, className: 'w-full h-full object-cover' }),
+                  createElement(
+                    'button',
+                    {
+                      type: 'button',
+                      onClick: () => handleRemoveImage(i),
+                      className: 'absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-full opacity-80 hover:opacity-100 transition-opacity cursor-pointer',
+                    },
+                    Icon('Trash2', { className: 'w-3 h-3' })
+                  )
+                )
+              )
+            )
+      ),
+
+      // Modal Actions
+      createElement(
+        'div',
+        { className: 'flex items-center gap-2 pt-3 border-t border-slate-100 justify-end' },
+        createElement(
+          'button',
+          {
+            type: 'button',
+            onClick: onClose,
+            className: 'px-4 py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer',
+          },
+          'Batal'
+        ),
+        createElement(
+          'button',
+          {
+            type: 'submit',
+            className: 'px-4 py-2 bg-[#103557] text-white rounded-lg text-xs font-bold hover:bg-[#0c2842] shadow-2xs cursor-pointer',
+          },
+          'Simpan Portofolio'
+        )
+      )
+    )
+  );
+}
+
+// ============================================================================
+// View Nota Modal
+// ============================================================================
 
 export function ViewNotaModal({ open, onClose, order }: any) {
   if (!open || !order) return null;
@@ -1192,11 +1535,15 @@ export function renderOrderMobileCard(order: OrderItem, index: number, send: any
           },
         }),
         createElement(TableActionButton, {
-          icon: 'Pencil',
-          title: 'Edit',
-          variant: 'primary',
+          icon: 'Camera',
+          title: 'Portofolio',
+          variant: 'info',
           onClick: () => {
-            if (navigate) navigate(`/app/order-manage?id=${order.id}`);
+            modals.open('ORDER_PORTFOLIO_MODAL', {
+              order,
+              onSubmit: (payload: any) =>
+                send.submit({ intent: 'update-portfolio', id: order.id, ...payload }, { method: 'post' }),
+            });
           },
         }),
         createElement(TableActionButton, {
@@ -1213,4 +1560,3 @@ export function renderOrderMobileCard(order: OrderItem, index: number, send: any
     )
   );
 }
-

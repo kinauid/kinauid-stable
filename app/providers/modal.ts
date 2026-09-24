@@ -302,6 +302,8 @@ import {
   OrderFilterModal,
   UploadPaymentProofModal,
   ViewPaymentProofModal,
+  ZoomProofModal,
+  OrderPortfolioModal,
   ViewNotaModal,
 } from '~/components/feature/OrderListWidgets';
 import {
@@ -322,6 +324,8 @@ const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   ORDER_FILTER_MODAL: OrderFilterModal,
   UPLOAD_PAYMENT_PROOF_MODAL: UploadPaymentProofModal,
   VIEW_PAYMENT_PROOF_MODAL: ViewPaymentProofModal,
+  ZOOM_PROOF_MODAL: ZoomProofModal,
+  ORDER_PORTFOLIO_MODAL: OrderPortfolioModal,
   VIEW_NOTA_MODAL: ViewNotaModal,
   UPDATE_ORDER_STATUS_MODAL: UpdateOrderStatusModal,
   CREATE_TRANSACTION_MODAL: CreateTransactionModal,
