@@ -174,6 +174,13 @@ export interface DataTableCardProps<T = any> {
 
   // 14. Styling
   className?: string;
+
+  // 15. Expandable Rows
+  expandableRows?: boolean;
+  renderExpandedRow?: (row: T, index?: number) => ReactNode;
+  expandableRowsComponent?: React.ComponentType<{ data: T; index?: number }> | ((props: { data: T; index?: number }) => ReactNode);
+  expandOnRowClicked?: boolean;
+  defaultExpandedRowKeys?: (string | number)[];
 }
 
 // ============================================================================
@@ -240,6 +247,11 @@ export function DataTableCard<T = any>(props: DataTableCardProps<T>): React.Reac
     onPageChange,
     onPageSizeChange,
     className = '',
+    expandableRows = false,
+    renderExpandedRow,
+    expandableRowsComponent,
+    expandOnRowClicked = false,
+    defaultExpandedRowKeys = [],
   } = props;
 
   // Hydration & Screen state
@@ -251,6 +263,20 @@ export function DataTableCard<T = any>(props: DataTableCardProps<T>): React.Reac
   const [sortColumnKey, setSortColumnKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string | number>>(new Set());
+  const [expandedRowKeys, setExpandedRowKeys] = useState<Set<string | number>>(new Set(defaultExpandedRowKeys));
+
+  const toggleRowExpand = (rowKey: string | number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedRowKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowKey)) {
+        next.delete(rowKey);
+      } else {
+        next.add(rowKey);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     setInternalSearch(searchValue);
@@ -817,6 +843,9 @@ export function DataTableCard<T = any>(props: DataTableCardProps<T>): React.Reac
               createElement(
                 'tr',
                 null,
+                expandableRows
+                  ? createElement('th', { className: 'w-10 px-3 py-3 text-center' }, '')
+                  : null,
                 isSelectable
                   ? createElement(
                       'th',
@@ -884,23 +913,49 @@ export function DataTableCard<T = any>(props: DataTableCardProps<T>): React.Reac
             createElement(
               'tbody',
               { className: 'divide-y divide-slate-100 bg-white' },
-              processedData.map((row, rowIdx) => {
+              processedData.flatMap((row, rowIdx) => {
                 const rowKey = getRowKey(row, rowIdx);
                 const isSelected = selectedRowKeys.has(rowKey);
+                const isExpanded = expandedRowKeys.has(rowKey);
 
-                return createElement(
+                const mainRow = createElement(
                   'tr',
                   {
                     key: rowKey,
-                    onClick: () => onRowClick && onRowClick(row),
+                    onClick: () => {
+                      if (expandOnRowClicked) {
+                        toggleRowExpand(rowKey);
+                      }
+                      if (onRowClick) onRowClick(row);
+                    },
                     className: cn(
                       'transition-colors duration-100',
                       striped && rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white',
                       highlightOnHover ? 'hover:bg-blue-50/25' : '',
                       isSelected ? 'bg-blue-50/50' : '',
-                      onRowClick ? 'cursor-pointer' : ''
+                      isExpanded ? 'bg-blue-50/20 font-medium' : '',
+                      (onRowClick || expandOnRowClicked) ? 'cursor-pointer' : ''
                     ),
                   },
+                  expandableRows
+                    ? createElement(
+                        'td',
+                        { className: 'w-10 px-3 py-3 text-center' },
+                        createElement(
+                          'button',
+                          {
+                            type: 'button',
+                            onClick: (e: React.MouseEvent) => toggleRowExpand(rowKey, e),
+                            className:
+                              'p-1 text-slate-400 hover:text-[#103557] hover:bg-slate-100 rounded transition-transform duration-150 cursor-pointer',
+                            title: isExpanded ? 'Tutup Rincian' : 'Buka Rincian',
+                          },
+                          Icon(isExpanded ? 'ChevronDown' : 'ChevronRight', {
+                            className: cn('w-4 h-4 transition-transform', isExpanded ? 'text-[#103557]' : ''),
+                          })
+                        )
+                      )
+                    : null,
                   isSelectable
                     ? createElement(
                         'td',
@@ -951,6 +1006,38 @@ export function DataTableCard<T = any>(props: DataTableCardProps<T>): React.Reac
                     );
                   })
                 );
+
+                if (!expandableRows || !isExpanded) {
+                  return [mainRow];
+                }
+
+                const totalColSpan =
+                  columns.length + (isSelectable ? 1 : 0) + (expandableRows ? 1 : 0);
+
+                const ExpandableComp = expandableRowsComponent;
+                const expandedContent = renderExpandedRow
+                  ? renderExpandedRow(row, rowIdx)
+                  : ExpandableComp
+                  ? createElement(ExpandableComp as any, { data: row, index: rowIdx })
+                  : null;
+
+                const expandedRow = createElement(
+                  'tr',
+                  {
+                    key: `${rowKey}_expanded`,
+                    className: 'bg-[#F8FAFC] border-b border-slate-200/80 transition-all',
+                  },
+                  createElement(
+                    'td',
+                    {
+                      colSpan: totalColSpan,
+                      className: 'p-0',
+                    },
+                    expandedContent
+                  )
+                );
+
+                return [mainRow, expandedRow];
               })
             )
           )

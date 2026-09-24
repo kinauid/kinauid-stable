@@ -304,6 +304,12 @@ import {
   ViewPaymentProofModal,
   ViewNotaModal,
 } from '~/components/feature/OrderListWidgets';
+import {
+  CreateOrEditProductModal,
+  CreateOrEditCategoryModal,
+  ProductDetailModal,
+  ProductFilterModal,
+} from '~/components/feature/ProductListWidgets';
 
 const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   CREATE_USER_MODAL: CreateUserModal,
@@ -320,6 +326,10 @@ const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   UPDATE_ORDER_STATUS_MODAL: UpdateOrderStatusModal,
   CREATE_TRANSACTION_MODAL: CreateTransactionModal,
   CREATE_ACCOUNT_MODAL: CreateAccountModal,
+  CREATE_PRODUCT_MODAL: CreateOrEditProductModal,
+  CREATE_CATEGORY_MODAL: CreateOrEditCategoryModal,
+  VIEW_PRODUCT_DETAIL_MODAL: ProductDetailModal,
+  PRODUCT_FILTER_MODAL: ProductFilterModal,
 };
 
 export function registerModal(id: string, component: React.ComponentType<any>) {
