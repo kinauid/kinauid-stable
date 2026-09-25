@@ -810,9 +810,10 @@ export async function handleProductAction({ request }: ActionFunctionArgs) {
           }),
         });
         invalidateCacheByTag('products');
+        invalidateCacheByTag('landing');
         return successResponse({
           show_in_dashboard: newVal,
-          message: newVal === 1 ? 'Produk ditampilkan di dashboard' : 'Produk disembunyikan dari dashboard',
+          message: newVal === 1 ? 'Produk ditampilkan di landing page' : 'Produk disembunyikan dari landing page',
         });
       }
 
