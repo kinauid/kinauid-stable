@@ -307,6 +307,10 @@ import {
   ViewNotaModal,
 } from '~/components/feature/OrderListWidgets';
 import {
+  EditPortfolioModal,
+  AddArchiveModal,
+} from '~/components/feature/OrderHistoryWidgets';
+import {
   CreateOrEditProductModal,
   CreateOrEditCategoryModal,
   ProductDetailModal,
@@ -326,6 +330,8 @@ const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   VIEW_PAYMENT_PROOF_MODAL: ViewPaymentProofModal,
   ZOOM_PROOF_MODAL: ZoomProofModal,
   ORDER_PORTFOLIO_MODAL: OrderPortfolioModal,
+  EDIT_PORTFOLIO_MODAL: EditPortfolioModal,
+  ADD_ARCHIVE_MODAL: AddArchiveModal,
   VIEW_NOTA_MODAL: ViewNotaModal,
   UPDATE_ORDER_STATUS_MODAL: UpdateOrderStatusModal,
   CREATE_TRANSACTION_MODAL: CreateTransactionModal,

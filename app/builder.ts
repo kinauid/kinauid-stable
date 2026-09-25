@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { toast } from 'sonner';
 import {
   useLoaderData,
   useActionData,
@@ -282,6 +283,22 @@ export function createPage<
       (key: string, params?: Record<string, string | number>) => t(key, params, currentLang),
       [currentLang]
     );
+
+    // Unified Action & Fetcher Response Toast Observer
+    useEffect(() => {
+      const resp = fetcher.data || actionData;
+      if (!resp) return;
+
+      if (typeof resp === 'object') {
+        if (resp.success === true) {
+          const msg = resp.meta?.message || resp.message;
+          if (msg && typeof msg === 'string') toast.success(msg);
+        } else if (resp.success === false || resp.error) {
+          const err = resp.error?.message || resp.error || resp.message;
+          if (err) toast.error(typeof err === 'string' ? err : 'Terjadi kesalahan sistem');
+        }
+      }
+    }, [fetcher.data, actionData]);
 
     const ctx: FeatureViewContext<TLoader, TAction, TState> = {
       // Primary Aliases

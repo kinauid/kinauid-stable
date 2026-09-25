@@ -656,3 +656,123 @@ export function FloatingSupportButton() {
     .build();
 }
 
+// ─── Customer / Institution Rankings Widget (Exact Match with rayns-verse/client) ───
+export function CustomerRankingsWidget({
+  institutionRanks = [],
+}: {
+  institutionRanks?: Array<{
+    institution_name: string;
+    freq: number;
+    total_sales: number;
+    total_sales_formatted: string;
+    total_qty: number;
+  }>;
+}) {
+  const top5 = institutionRanks.slice(0, 5);
+  const maxFreq = Math.max(1, ...top5.map((t) => t.freq));
+
+  return Div(
+    { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
+    // Left: Top 5 Kategori / Instansi Bar Chart
+    Div(
+      { className: 'bg-white p-6 rounded-2xl border border-slate-200/90 shadow-sm space-y-4' },
+      Div(
+        { className: 'flex items-center justify-between' },
+        Div(
+          null,
+          H3({ className: 'text-base font-extrabold text-slate-900 tracking-tight' }, 'Top 5 Kategori / Instansi'),
+          P({ className: 'text-xs text-slate-500' }, 'Frekuensi pemesanan produk per institusi')
+        ),
+        Icon('TrendingUp', { className: 'w-5 h-5 text-indigo-600' })
+      ),
+      Div(
+        { className: 'space-y-3.5 pt-2' },
+        ...top5.map((item, idx) => {
+          const widthPct = Math.min(100, Math.max(8, Math.round((item.freq / maxFreq) * 100)));
+          return Div(
+            { key: idx, className: 'space-y-1' },
+            Div(
+              { className: 'flex justify-between items-center text-xs' },
+              Span({ className: 'font-bold text-slate-800 truncate max-w-[240px]', title: item.institution_name }, `${idx + 1}. ${item.institution_name}`),
+              Span({ className: 'font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full text-[11px]' }, `${item.freq} Order`)
+            ),
+            Div(
+              { className: 'w-full h-3 bg-slate-100 rounded-full overflow-hidden' },
+              Div({
+                className: 'h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500',
+                style: { width: `${widthPct}%` },
+              })
+            )
+          );
+        }),
+        top5.length === 0
+          ? Div({ className: 'text-center py-10 text-xs text-slate-400' }, 'Belum ada data pemesanan institusi')
+          : null
+      )
+    ),
+
+    // Right: Ranking Customer Table
+    Div(
+      { className: 'bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col' },
+      Div(
+        { className: 'p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center' },
+        Div(
+          null,
+          H3({ className: 'text-base font-extrabold text-slate-900 flex items-center gap-2 tracking-tight' },
+            Icon('BarChart2', { className: 'w-4 h-4 text-blue-600' }),
+            Span({}, 'Ranking Customer / Institusi')
+          ),
+          P({ className: 'text-xs text-slate-500' }, 'Urutan volume pesanan dan total nilai omzet')
+        )
+      ),
+      Div(
+        { className: 'overflow-y-auto max-h-[300px]' },
+        createElement(
+          'table',
+          { className: 'w-full text-xs text-left' },
+          createElement(
+            'thead',
+            { className: 'text-[11px] font-bold text-slate-500 uppercase bg-slate-50/80 sticky top-0 border-b border-slate-100' },
+            createElement(
+              'tr',
+              null,
+              createElement('th', { className: 'px-5 py-3' }, 'Nama Instansi / Pemesan'),
+              createElement('th', { className: 'px-4 py-3 text-center' }, 'Freq'),
+              createElement('th', { className: 'px-5 py-3 text-right' }, 'Total Omzet')
+            )
+          ),
+          createElement(
+            'tbody',
+            { className: 'divide-y divide-slate-100' },
+            ...institutionRanks.map((item, idx) =>
+              createElement(
+                'tr',
+                { key: idx, className: 'hover:bg-slate-50/60 transition-colors' },
+                createElement(
+                  'td',
+                  { className: 'px-5 py-3 font-semibold text-slate-800 truncate max-w-[220px]', title: item.institution_name },
+                  `${idx + 1}. ${item.institution_name}`
+                ),
+                createElement(
+                  'td',
+                  { className: 'px-4 py-3 text-center' },
+                  createElement('span', { className: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200' }, `${item.freq}x`)
+                ),
+                createElement(
+                  'td',
+                  { className: 'px-5 py-3 text-right font-mono font-bold text-slate-900' },
+                  item.total_sales_formatted
+                )
+              )
+            ),
+            institutionRanks.length === 0
+              ? createElement('tr', null, createElement('td', { colSpan: 3, className: 'text-center py-10 text-xs text-slate-400' }, 'Belum ada data customer'))
+              : null
+          )
+        )
+      )
+    )
+  );
+}
+
+

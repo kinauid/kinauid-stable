@@ -42,6 +42,9 @@ export const OrderItemSchema = z.object({
   payment_detail: z.any().optional(),
   dp_payment_detail: z.any().optional(),
   is_portfolio: z.union([z.boolean(), z.number()]).optional(),
+  is_archive: z.union([z.boolean(), z.number()]).optional(),
+  review: z.string().optional(),
+  rating: z.union([z.number(), z.string()]).optional(),
   images: z.any().optional(),
   portfolio_images: z.array(z.string()).optional(),
   created_at: z.string().optional(),
@@ -55,6 +58,43 @@ export const OrderItemSchema = z.object({
 
 export type OrderItem = z.infer<typeof OrderItemSchema>;
 export type SizeBreakdown = z.infer<typeof SizeBreakdownSchema>;
+
+export const SettleOrderSchema = z.object({
+  intent: z.literal('settle-order'),
+  id: z.string().min(1, 'ID pesanan wajib diisi'),
+  is_portfolio: z.union([z.number(), z.string(), z.boolean()]).optional(),
+});
+
+export const UpdatePortfolioSchema = z.object({
+  intent: z.literal('update-portfolio'),
+  id: z.string().min(1, 'ID pesanan wajib diisi'),
+  is_portfolio: z.union([z.number(), z.string(), z.boolean()]).optional(),
+  review: z.string().optional(),
+  rating: z.union([z.number(), z.string()]).optional(),
+  images: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
+export const TogglePortfolioSchema = z.object({
+  intent: z.literal('toggle-portfolio'),
+  id: z.string().min(1, 'ID pesanan wajib diisi'),
+  is_portfolio: z.union([z.number(), z.string(), z.boolean()]),
+});
+
+export const CreateArchiveSchema = z.object({
+  intent: z.literal('create-archive'),
+  institution_name: z.string().min(1, 'Nama instansi / pemesan wajib diisi'),
+  pic_name: z.string().optional(),
+  pic_phone: z.string().optional(),
+  product_name: z.string().min(1, 'Nama produk wajib diisi'),
+  total_qty: z.union([z.number(), z.string()]).default(1),
+  total_amount: z.union([z.number(), z.string()]).default(0),
+  order_date: z.string().optional(),
+  review: z.string().optional(),
+  rating: z.union([z.number(), z.string()]).optional().default(5),
+  images: z.union([z.string(), z.array(z.string())]).optional(),
+  is_portfolio: z.union([z.number(), z.string(), z.boolean()]).default(1),
+  is_kkn: z.union([z.number(), z.string(), z.boolean()]).default(0),
+});
 
 export interface OrderState {
   search?: string;

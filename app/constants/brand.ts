@@ -11,6 +11,12 @@ export function getWhatsAppLink(phone: string = ADMIN_WA, message: string = 'Hal
   return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }
 
+export const WORKSHOP_ADDRESS = 'Jalan Terusan Jl. Murai 1 No.7 , Kel. Korpri Raya, Kec. Sukarame, Kota Bandar Lampung, Lampung.';
+
+export function getGoogleMapsLink(query: string = 'Kinau ID Percetakan Bandar Lampung'): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 /**
  * Palet Warna Resmi Brand Kinau ID (Revisi UI/UX Modern & Lembut)
  */

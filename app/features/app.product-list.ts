@@ -7,7 +7,7 @@ import { ProductService, handleProductAction } from '~/services/product.service'
 import { getProductActiveFilterBadges, createProductTableColumns, createCategoryTableColumns, renderProductMobileCard, ProductExpandedRow } from '~/components/feature/ProductListWidgets';
 
 export const metaAccess: MetaAccessConfig = { roles: ['admin', 'staff', 'manager'], permissions: ['product:read'] };
-export const meta = createMeta({ title: 'Katalog & Produk — Kinau ID', description: 'Kelola jenis barang, aturan harga grosir, variasi item, dan kategori.' });
+export const meta = createMeta({ title: 'Daftar Produk — Kinau ID', description: 'Kelola jenis barang, aturan harga grosir, variasi item, dan kategori.' });
 
 export const loader = withMiddleware([withTelemetry('loader:app.product-list'), rateLimitMiddleware({ limit: 120, windowMs: 60_000 })], async ({ request }) => {
   return ProductService.getProducts(extractUrlState<ProductState>(request, { tab: 'products', search: '', category: 'all', show_in_dashboard: 'all', page: 1 }));
@@ -33,7 +33,7 @@ export default createPage<InferLoader<typeof loader>, any, ProductState>(
           columns: createCategoryTableColumns(send), data: data?.categories ?? [],
         })
       : DataTableCard<any>({
-          title: 'Katalog & Daftar Produk', subtitle: 'Atur jenis barang, aturan harga grosir berjenjang, variasi item, dan visibilitas.',
+          title: 'Daftar Produk', subtitle: 'Atur jenis barang, aturan harga grosir berjenjang, variasi item, dan visibilitas di landing page.',
           totalItems: data?.products?.length ?? 0, isLoading: isLoading || isNavigating,
           stats: [
             { label: 'Total Produk Katalog', value: `${data?.totalProducts ?? 0} Produk`, icon: 'Tag', color: 'cyan', description: `${data?.totalCategories ?? 0} kategori aktif`, trend: `${data?.totalProducts ?? 0} item` },

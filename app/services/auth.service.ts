@@ -90,7 +90,7 @@ export class AuthService {
     const role: string = user.role ?? 'user';
     const dest = (redirectTo && redirectTo !== '/')
       ? redirectTo
-      : (role === 'admin' || role === 'staff' || role === 'developer' || role === 'ceo') ? '/app/order-list' : '/customer/orders';
+      : (role === 'customer' ? '/customer/orders' : '/app/dashboard');
 
     return createUserSession(
       {
@@ -154,7 +154,7 @@ export class AuthService {
     const role: string = user.role ?? 'customer';
     const dest = (redirectTo && redirectTo !== '/')
       ? redirectTo
-      : (role === 'admin' || role === 'staff' || role === 'developer' || role === 'ceo') ? '/app/order-list' : '/customer/orders';
+      : (role === 'customer' ? '/customer/orders' : '/app/dashboard');
 
     return createUserSession(
       {

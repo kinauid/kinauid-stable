@@ -639,7 +639,16 @@ export function renderModal(
   props: ModalProps,
   ...children: (ReactNode | FluentBuilder<any>)[]
 ): React.ReactElement | null {
-  const { open, onClose, title, description, size = 'md', className = '', children: propChildren } = props as any;
+  const {
+    open,
+    onClose,
+    title,
+    description,
+    size = 'md',
+    className = '',
+    bodyClassName = '',
+    children: propChildren,
+  } = props as any;
   if (!open) return null;
 
   const sizeStyles: Record<string, string> = {
@@ -657,12 +666,13 @@ export function renderModal(
     if (sanitized !== null) safeChildren.push(sanitized);
   }
 
+  const hasHeader = Boolean(title || description);
 
   return createElement(
     'div',
     {
       className:
-        'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150',
+        'fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto',
       onClick: (e: any) => {
         if (e.target === e.currentTarget) onClose();
       },
@@ -671,41 +681,50 @@ export function renderModal(
       'div',
       {
         className: cn(
-          'w-full bg-[var(--card)] border border-[var(--border)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden animate-in zoom-in-95 duration-150',
+          'w-full max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] md:max-h-[calc(100vh-4rem)] flex flex-col bg-[var(--card)] border border-[var(--border)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden animate-in zoom-in-95 duration-150 my-auto',
           sizeStyles[size] || sizeStyles.md,
           className
         ),
       },
+      hasHeader
+        ? createElement(
+            'div',
+            {
+              className:
+                'flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--surface-subtle)] shrink-0',
+            },
+            createElement(
+              'div',
+              { className: 'min-w-0 pr-2' },
+              title &&
+                createElement('h3', { className: 'text-sm font-bold text-[var(--foreground)] truncate' }, title),
+              description &&
+                createElement(
+                  'p',
+                  { className: 'text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2' },
+                  description
+                )
+            ),
+            createElement(
+              'button',
+              {
+                type: 'button',
+                onClick: onClose,
+                className:
+                  'p-1.5 rounded-full text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors cursor-pointer shrink-0 ml-auto',
+                'aria-label': 'Tutup modal',
+              },
+              renderIcon('X', { size: 16 })
+            )
+          )
+        : null,
       createElement(
         'div',
         {
-          className:
-            'flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--surface-subtle)]',
+          className: cn('flex-1 overflow-y-auto min-h-0 p-4 space-y-4', bodyClassName),
         },
-        createElement(
-          'div',
-          null,
-          title &&
-            createElement('h3', { className: 'text-sm font-bold text-[var(--foreground)]' }, title),
-          description &&
-            createElement(
-              'p',
-              { className: 'text-xs text-[var(--muted-foreground)] mt-0.5' },
-              description
-            )
-        ),
-        createElement(
-          'button',
-          {
-            type: 'button',
-            onClick: onClose,
-            className:
-              'p-1 rounded-full text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] transition-colors cursor-pointer',
-          },
-          renderIcon('X', { size: 16 })
-        )
-      ),
-      createElement('div', { className: 'p-4 space-y-4' }, ...safeChildren)
+        ...safeChildren
+      )
     )
   );
 }

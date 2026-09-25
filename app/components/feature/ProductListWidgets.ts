@@ -29,7 +29,11 @@ import {
   DRIVE_FOLDER_OPTIONS,
 } from '~/schemas/product.schema';
 import { formatCurrency, formatNumberInput, parseCurrency } from '~/utils/format';
+import { getResourceUrl } from '~/utils/resource';
+import { toast } from 'sonner';
 import { cn } from '~/lib/utils';
+
+
 
 // Helper to sanitize undefined / null strings from backend
 export function sanitizeString(val?: string | null): string {
@@ -131,7 +135,8 @@ export function getProductActiveFilterBadges(
 // ============================================================================
 
 export function ProductItemCell(product: ProductItem) {
-  const imgUrl = sanitizeString(product.image);
+  const rawImg = sanitizeString(product.image);
+  const imgUrl = rawImg ? getResourceUrl(rawImg) : '';
   const desc = sanitizeString(product.description);
   const hasImage = Boolean(imgUrl);
 
@@ -408,14 +413,28 @@ export function createProductTableColumns(
           'button',
           {
             type: 'button',
-            onClick: () =>
+            onClick: (e: any) => {
+              e.stopPropagation();
+              const nextVal = isShow ? 0 : 1;
+              toast.info(
+                nextVal === 1
+                  ? `Mengaktifkan tampilan "${row.name}" di Landing Page...`
+                  : `Menyembunyikan "${row.name}" dari Landing Page...`
+              );
               send.submit(
                 { intent: 'toggle_dashboard', id: row.id, show_in_dashboard: row.show_in_dashboard },
                 { method: 'post' }
-              ),
-            className:
-              'p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer text-slate-500',
-            title: isShow ? 'Tampil di Dashboard (Klik untuk sembunyikan)' : 'Sembunyi (Klik untuk tampilkan)',
+              );
+            },
+            className: cn(
+              'p-1.5 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95',
+              isShow
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+            ),
+            title: isShow
+              ? 'Tampil di Landing Page & Form (Klik untuk sembunyikan)'
+              : 'Disembunyikan (Klik untuk tampilkan di Landing Page)',
           },
           isShow
             ? Icon('Eye', { className: 'w-4 h-4 text-emerald-600' })
@@ -1612,7 +1631,8 @@ export function renderProductMobileCard(
   const cat = categories.find((c) => String(c.id) === String(product.category_id));
   const rawLabel = cat?.name || product.category_name;
   const catLabel = sanitizeString(rawLabel) || 'Lainnya';
-  const imgUrl = sanitizeString(product.image);
+  const rawImg = sanitizeString(product.image);
+  const imgUrl = rawImg ? getResourceUrl(rawImg) : '';
   const hasImage = Boolean(imgUrl);
 
   return createElement(

@@ -24,10 +24,10 @@ import { renderRootLayout, renderRootErrorBoundary } from "~/features/root";
 import stylesheet from "~/index.css?url";
 
 export const links: LinksFunction = () => [
-  { rel: "icon", type: "image/png", href: "/head-icon-kinau.png?v=2" },
-  { rel: "icon", type: "image/x-icon", href: "/favicon.ico?v=2" },
-  { rel: "shortcut icon", type: "image/x-icon", href: "/favicon.ico?v=2" },
-  { rel: "apple-touch-icon", href: "/head-icon-kinau.png?v=2" },
+  { rel: "icon", href: "/favicon.ico", sizes: "any" },
+  { rel: "icon", href: "/logo-kinau.png", type: "image/png" },
+  { rel: "icon", href: "/head-icon-kinau.png", type: "image/png" },
+  { rel: "apple-touch-icon", href: "/logo-kinau.png" },
   { rel: "stylesheet", href: stylesheet },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -70,15 +70,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/head-icon-kinau.png?v=2"
-        />
-        <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
-        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=2" />
-        <link rel="apple-touch-icon" href="/head-icon-kinau.png?v=2" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" href="/logo-kinau.png" />
+        <link rel="icon" type="image/png" href="/head-icon-kinau.png" />
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/logo-kinau.png" />
         <Meta />
         <Links />
         <script

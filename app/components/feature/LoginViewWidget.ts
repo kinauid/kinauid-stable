@@ -152,6 +152,15 @@ export function LoginViewWidget({ actionData, isSubmitting }: LoginViewWidgetPro
           createElement('div', { className: 'font-bold text-xs text-slate-900 group-hover:text-[#103557]' }, BRAND_NAME),
           createElement('div', { className: 'text-[10px] font-mono text-slate-500 uppercase tracking-wider' }, 'PORTAL PRODUKSI')
         )
+      ),
+      createElement(
+        NavLink,
+        {
+          to: '/',
+          className: 'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white/90 hover:bg-white text-slate-700 hover:text-[#103557] text-xs font-bold shadow-2xs transition-all hover:scale-102 cursor-pointer no-underline',
+        },
+        UI.Icon('ArrowLeft', { size: 14, className: 'text-[#103557]' }),
+        createElement('span', null, 'Kembali ke Beranda')
       )
     ),
 

@@ -257,6 +257,7 @@ export interface ModalProps {
   description?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   className?: string;
+  bodyClassName?: string;
 }
 
 export type FormSubmitHandler<T = Record<string, any>> = (

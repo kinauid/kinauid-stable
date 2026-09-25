@@ -29,3 +29,21 @@ export function formatPhoneNumber(input: string): string {
   const p3 = clean.slice(8);
   return `+62 ${p1}-${p2}-${p3}`.replace(/-+$/, '');
 }
+
+export function formatFullDate(date: string | Date | number | undefined | null): string {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch {
+    return String(date);
+  }
+}

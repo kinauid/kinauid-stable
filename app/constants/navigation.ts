@@ -29,26 +29,9 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
         icon: "LayoutDashboard",
       },
       {
-        label: "Pusat Data & Drive",
-        href: "/app/drive/customer",
-        icon: "HardDrive",
-        badge: "Drive",
-        children: [
-          { label: "File Customer", href: "/app/drive/customer" },
-          { label: "Internal Workshop", href: "/app/drive/internal" },
-        ],
-      },
-      {
-        label: "Studio Desain & Custom",
-        href: "/customer/configure",
-        icon: "Sparkles",
-        badge: "3D",
-      },
-      {
         label: "Antrian Desain & Template",
         href: "/app/setting/design",
         icon: "LayoutTemplate",
-        badge: "Desain",
       },
     ],
   },
@@ -59,67 +42,31 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
         label: "Input Pesanan",
         href: "/app/order-form",
         icon: "PlusCircle",
-        badge: "Baru",
       },
       {
         label: "Daftar Pesanan",
         href: "/app/order-list",
         icon: "FileText",
-        badge: "Live",
-        children: [
-          {
-            label: "Semua Pesanan",
-            href: buildEncryptedUrl("/app/order-list", { tab: "all" }),
-          },
-          {
-            label: "Antrean Cetak & Sablon",
-            href: buildEncryptedUrl("/app/order-list", { tab: "production" }),
-            badge: "12",
-          },
-          {
-            label: "Pesanan KKN / Kampus",
-            href: buildEncryptedUrl("/app/order-list", { tab: "kkn" }),
-          },
-          {
-            label: "Pesanan Reguler",
-            href: buildEncryptedUrl("/app/order-list", { tab: "reguler" }),
-          },
-        ],
+      },
+      {
+        label: "Riwayat Pesanan",
+        href: "/app/order-history",
+        icon: "History",
       },
       {
         label: "Area Cetak & Print",
         href: "/app/print-area",
         icon: "Printer",
-        badge: "Cetak",
       },
       {
         label: "Email & Broadcast Blast",
         href: "/app/email",
         icon: "Mail",
-        badge: "Email",
       },
       {
-        label: "Katalog & Produk",
+        label: "Daftar Produk",
         href: "/app/product-list",
         icon: "Tag",
-        children: [
-          {
-            label: "ID Card & Lanyard",
-            href: buildEncryptedUrl("/app/product-list", { cat: "idcard" }),
-          },
-          {
-            label: "Jersey Sublimasi",
-            href: buildEncryptedUrl("/app/product-list", { cat: "jersey" }),
-          },
-          {
-            label: "Kaos & Polo Shirt",
-            href: buildEncryptedUrl("/app/product-list", { cat: "tshirt" }),
-          },
-          {
-            label: "Jaket & Hoodie",
-            href: buildEncryptedUrl("/app/product-list", { cat: "jacket" }),
-          },
-        ],
       },
       {
         label: "Pengadaan & Belanja",
@@ -130,12 +77,10 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
           {
             label: "Stok & Inventori Bahan",
             href: "/app/procurement/stock",
-            badge: "Alert",
           },
           { label: "Supplier Rekanan", href: "/app/procurement/suppliers" },
         ],
       },
-      { label: "Riwayat Pesanan", href: "/app/order-history", icon: "History" },
     ],
   },
   {
@@ -210,10 +155,19 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
     groupTitle: "SISTEM & AKSES",
     items: [
       {
-        label: "Error Telemetry & Logs",
+        label: "Keamanan",
         href: "/app/system/error-logs",
-        icon: "AlertTriangle",
-        badge: "Live",
+        icon: "ShieldAlert",
+        children: [
+          {
+            label: "Error Telemetry & Logs",
+            href: "/app/system/error-logs",
+          },
+          {
+            label: "Backend Bridge",
+            href: "/app/setting/bridge",
+          },
+        ],
       },
       {
         label: "Tiket & Aduan Masalah",
@@ -224,7 +178,6 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
         label: "Manajemen Akun",
         href: "/dashboard/admin/manage",
         icon: "UserCog",
-        badge: "RBAC",
         children: [
           {
             label: "Pengguna & Staff",
@@ -241,14 +194,38 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
         ],
       },
       {
-        label: "Backend Bridge",
-        href: "/app/setting/bridge",
-        icon: "ArrowRightLeft",
-      },
-      {
         label: "Recycle Bin",
         href: "/app/setting/recycle-bin",
         icon: "Recycle",
+      },
+    ],
+  },
+  {
+    groupTitle: "OFFICE",
+    items: [
+      {
+        label: "Virtual Office 3D",
+        href: "/office/overview",
+        icon: "Building2",
+      },
+      {
+        label: "Studio Kustom Kaos 3D",
+        href: "/design/customizer",
+        icon: "Sparkles",
+      },
+      {
+        label: "Studio Desain & Custom",
+        href: "/customer/configure",
+        icon: "Palette",
+      },
+      {
+        label: "Pusat Data & Drive",
+        href: "/app/drive/customer",
+        icon: "HardDrive",
+        children: [
+          { label: "File Customer", href: "/app/drive/customer" },
+          { label: "Internal Workshop", href: "/app/drive/internal" },
+        ],
       },
     ],
   },

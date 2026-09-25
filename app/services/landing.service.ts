@@ -1,5 +1,6 @@
 import { cacheData } from '~/utils/cache';
 import type { LandingData, LandingProductItem, LandingPortfolioItem } from '~/schemas/landing.schema';
+import { SAMPLE_ARTICLES } from '~/services/article.service';
 
 const BACKEND_URL =
   (typeof process !== 'undefined' && process.env?.VITE_KINAU_BACKEND_URL) ||
@@ -9,35 +10,53 @@ const BACKEND_URL =
 export const LandingService = {
   /**
    * Fetches public landing page aggregate statistics, featured products, and portfolio reviews.
+   * Strictly filters products by active flagging (show_in_dashboard = 1 / is_active = 1)
+   * and portfolio items by is_portfolio = 1.
    */
   async getLandingData(): Promise<LandingData> {
     return cacheData(
       'public:landing:data',
-      60,
+      30,
       async () => {
         try {
-          // 1. Fetch Products for display (deleted_on null)
+          // 1. Fetch Products for display (deleted = 0 & show_in_dashboard = 1)
           const productsPromise = fetch(`${BACKEND_URL}/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               table: 'products',
               where: { deleted_on: 'null' },
-              size: 24,
+              size: 50,
             }),
           })
             .then((r) => r.json())
             .catch(() => ({ data: [] }));
 
-          // 2. Fetch Orders for portfolio (deleted_on null, small column set)
+          // 2. Fetch Orders for portfolio (is_portfolio = 1 & deleted_on null)
           const ordersPromise = fetch(`${BACKEND_URL}/select`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               table: 'orders',
-              columns: ['id', 'order_number', 'institution_name', 'images', 'review', 'rating', 'status', 'is_portfolio', 'total_product', 'created_on'],
+              columns: [
+                'id',
+                'order_number',
+                'institution_name',
+                'pic_name',
+                'images',
+                'review',
+                'rating',
+                'status',
+                'is_portfolio',
+                'is_archive',
+                'total_product',
+                'created_on',
+                'deleted',
+                'deleted_on',
+              ],
               where: { deleted_on: 'null' },
-              size: 50,
+              orderBy: ['is_portfolio', 'desc'],
+              size: 100,
             }),
           })
             .then((r) => r.json())
@@ -49,34 +68,40 @@ export const LandingService = {
             ? productsRes.data
             : (productsRes?.data?.items ?? productsRes?.items ?? []);
 
-          let products: LandingProductItem[] = rawProducts
-            .filter((p: any) => p.name && p.name !== 'undefined')
+          // Filter products strictly: MUST be explicitly flagged (show_in_dashboard = 1 / true) and not deleted
+          const products: LandingProductItem[] = rawProducts
+            .filter((p: any) => {
+              const isFlagged =
+                Number(p.show_in_dashboard) === 1 ||
+                p.show_in_dashboard === '1' ||
+                p.show_in_dashboard === true;
+              const isNotDeleted = Number(p.deleted ?? 0) === 0 && (!p.deleted_on || p.deleted_on === 'null');
+              const hasValidName = p.name && p.name !== 'undefined' && p.name !== 'null';
+              return Boolean(isFlagged && isNotDeleted && hasValidName);
+            })
             .map((p: any) => ({
               id: String(p.id || p.code || ''),
               name: p.name || 'Produk Custom Kinau',
-              image: p.image && p.image !== 'undefined' ? p.image : '',
+              image: p.image && p.image !== 'undefined' && p.image !== 'null' ? p.image : '',
               category: p.category_name || p.type || 'Custom',
               total_sold_items: Number(p.total_sold_items) || 0,
             }));
-
-          // If products array is empty, provide default featured items
-          if (products.length === 0) {
-            products = [
-              { id: '1', name: 'Leadership Package', image: '44ddc7cc251f8c8bea64.jpg', category: 'Package', total_sold_items: 1250 },
-              { id: '2', name: 'Id Card & Lanyard', image: 'acc9db0fd06bd1700fe7.png', category: 'Package', total_sold_items: 3420 },
-              { id: '3', name: 'Cotton Combed Premium', image: '7f51fcb075c28e1b3add.jpg', category: 'Apparel', total_sold_items: 890 },
-              { id: '4', name: 'Custom Uniform', image: '6731a13100c19e54d54b.png', category: 'Apparel', total_sold_items: 450 },
-              { id: '5', name: 'Pin & Keychain', image: '171d05ef59dfe8cabbb3.png', category: 'Souvenir', total_sold_items: 2100 },
-              { id: '6', name: 'Tumbler Custom', image: '89ea3e19dad326b6528b.png', category: 'Souvenir', total_sold_items: 670 },
-            ];
-          }
 
           const rawOrders = Array.isArray(ordersRes?.data)
             ? ordersRes.data
             : (ordersRes?.data?.items ?? ordersRes?.items ?? []);
 
+          // Filter portfolio items strictly: MUST be flagged is_portfolio = 1 / is_showcase = 1 and not deleted
           const portfolioItems: LandingPortfolioItem[] = rawOrders
-            .filter((o: any) => o.institution_name || o.status === 'done' || o.is_portfolio === 1 || o.is_portfolio === '1')
+            .filter((o: any) => {
+              const isFlagged =
+                Number(o.is_portfolio) === 1 ||
+                o.is_portfolio === '1' ||
+                o.is_portfolio === true ||
+                Number(o.is_showcase) === 1;
+              const isNotDeleted = Number(o.deleted) === 0 && (!o.deleted_on || o.deleted_on === 'null');
+              return isFlagged && isNotDeleted;
+            })
             .map((o: any) => {
               let images: string[] = [];
               try {
@@ -94,21 +119,12 @@ export const LandingService = {
                 qty: o.total_product ? `${Number(o.total_product).toLocaleString('id-ID')}` : '150+',
                 total_product: Number(o.total_product) || 150,
                 images,
-                review: o.review || 'Hasil cetak tajam dan presisi, warna sangat akurat dan pengerjaan cepat.',
+                review: o.review || 'Hasil cetak tajam dan presisi, warna akurat dan pengerjaan cepat.',
                 pic_name: o.pic_name || 'Koordinator Pelanggan',
                 rating: Number(o.rating) || 5,
                 created_at: o.created_on || o.created_at || '',
               };
             });
-
-          // Fallback if empty portfolio items
-          const finalPortfolio = portfolioItems.length > 0 ? portfolioItems : [
-            { id: '1', institution_name: 'PKKMB FEB UNILA 2026', qty: '1.200', total_product: 1200, images: ['acc9db0fd06bd1700fe7.png'], review: 'Hasil cetak tali lanyard & ID Card sangat tajam, selesai lebih cepat dari deadline.', pic_name: 'Ketua Panitia PKKMB', rating: 5, created_at: '2026-08' },
-            { id: '2', institution_name: 'RSIA Bunda Asy-Syifa', qty: '350', total_product: 350, images: ['44ddc7cc251f8c8bea64.jpg'], review: 'ID Card pegawai sangat rapi dan tahan lama. Rekomendasi utama untuk instansi.', pic_name: 'Bagian HRD', rating: 5, created_at: '2026-07' },
-            { id: '3', institution_name: 'BEM Universitas Airlangga', qty: '850', total_product: 850, images: ['6731a13100c19e54d54b.png'], review: 'Hasil sablon dan bahan jersey sangat nyaman dan adem. Pelayanan sangat responsif!', pic_name: 'Koordinator BEM', rating: 5, created_at: '2026-05' },
-            { id: '4', institution_name: 'Makrab Teknik Lingkungan', qty: '280', total_product: 280, images: ['7f51fcb075c28e1b3add.jpg'], review: 'Kaos combed premium kualitas nomor 1. Semua peserta makrab sangat puas.', pic_name: 'Ketua Panitia Makrab', rating: 5, created_at: '2026-06' },
-            { id: '5', institution_name: 'Kawasan Komersil ITERA', qty: '500', total_product: 500, images: ['171d05ef59dfe8cabbb3.png'], review: 'Paket souvenir dan merchandise seminar sangat eksklusif. Terima kasih Kinau ID.', pic_name: 'Pengelola Kawasan', rating: 5, created_at: '2026-07' },
-          ];
 
           const stats = {
             countFinished: rawOrders.filter((o: any) => o.status === 'done').length || 578,
@@ -120,7 +136,8 @@ export const LandingService = {
           return {
             stats,
             products,
-            portfolioItems: finalPortfolio,
+            portfolioItems,
+            articles: SAMPLE_ARTICLES,
           };
         } catch {
           return {
@@ -130,24 +147,13 @@ export const LandingService = {
               uniqueClients: 346,
               countSponsors: 259,
             },
-            products: [
-              { id: '1', name: 'Leadership Package', image: '44ddc7cc251f8c8bea64.jpg', category: 'Package', total_sold_items: 1250 },
-              { id: '2', name: 'Id Card & Lanyard', image: 'acc9db0fd06bd1700fe7.png', category: 'Package', total_sold_items: 3420 },
-              { id: '3', name: 'Cotton Combed Premium', image: '7f51fcb075c28e1b3add.jpg', category: 'Apparel', total_sold_items: 890 },
-              { id: '4', name: 'Custom Uniform', image: '6731a13100c19e54d54b.png', category: 'Apparel', total_sold_items: 450 },
-              { id: '5', name: 'Pin & Keychain', image: '171d05ef59dfe8cabbb3.png', category: 'Souvenir', total_sold_items: 2100 },
-              { id: '6', name: 'Tumbler Custom', image: '89ea3e19dad326b6528b.png', category: 'Souvenir', total_sold_items: 670 },
-            ],
-            portfolioItems: [
-              { id: '1', institution_name: 'PKKMB FEB UNILA 2026', qty: '1.200', total_product: 1200, images: ['acc9db0fd06bd1700fe7.png'], review: 'Hasil cetak tali lanyard & ID Card sangat tajam, selesai lebih cepat dari deadline.', pic_name: 'Ketua Panitia PKKMB', rating: 5, created_at: '2026-08' },
-              { id: '2', institution_name: 'RSIA Bunda Asy-Syifa', qty: '350', total_product: 350, images: ['44ddc7cc251f8c8bea64.jpg'], review: 'ID Card pegawai sangat rapi dan tahan lama. Rekomendasi utama untuk instansi.', pic_name: 'Bagian HRD', rating: 5, created_at: '2026-07' },
-              { id: '3', institution_name: 'BEM Universitas Airlangga', qty: '850', total_product: 850, images: ['6731a13100c19e54d54b.png'], review: 'Hasil sablon dan bahan jersey sangat nyaman dan adem. Pelayanan sangat responsif!', pic_name: 'Koordinator BEM', rating: 5, created_at: '2026-05' },
-              { id: '4', institution_name: 'Makrab Teknik Lingkungan', qty: '280', total_product: 280, images: ['7f51fcb075c28e1b3add.jpg'], review: 'Kaos combed premium kualitas nomor 1. Semua peserta makrab sangat puas.', pic_name: 'Ketua Panitia Makrab', rating: 5, created_at: '2026-06' },
-            ],
+            products: [],
+            portfolioItems: [],
+            articles: SAMPLE_ARTICLES,
           };
         }
       },
-      { tags: ['landing'], staleWhileRevalidateSeconds: 300 }
+      { tags: ['landing'], staleWhileRevalidateSeconds: 60 }
     );
   },
 };

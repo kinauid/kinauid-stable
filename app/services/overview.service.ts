@@ -1,6 +1,14 @@
 import { OrderService } from './order.service';
 import { cacheData } from '~/utils/cache';
 
+export interface InstitutionRankItem {
+  institution_name: string;
+  freq: number;
+  total_sales: number;
+  total_sales_formatted: string;
+  total_qty: number;
+}
+
 export interface OverviewDashboardData {
   totalOrderAmount: number;
   totalOrderAmountFormatted: string;
@@ -41,6 +49,8 @@ export interface OverviewDashboardData {
     statusColor: string;
     amountFormatted: string;
   }>;
+
+  institutionRanks: InstitutionRankItem[];
 
   categorySummaries: Array<{
     label: string;
@@ -214,6 +224,25 @@ export class OverviewService {
         });
       }
 
+      // Institution / Customer Rankings
+      const rankMap: Record<string, { institution_name: string; freq: number; total_sales: number; total_qty: number }> = {};
+      for (const o of orders) {
+        const name = (o.institution_name || o.customer_name || 'Pelanggan Umum').trim();
+        if (!rankMap[name]) {
+          rankMap[name] = { institution_name: name, freq: 0, total_sales: 0, total_qty: 0 };
+        }
+        rankMap[name].freq += 1;
+        rankMap[name].total_sales += Number(o.grand_total) || 0;
+        rankMap[name].total_qty += Number(o.total_qty) || 0;
+      }
+
+      const institutionRanks: InstitutionRankItem[] = Object.values(rankMap)
+        .sort((a, b) => b.freq - a.freq || b.total_sales - a.total_sales)
+        .map((item) => ({
+          ...item,
+          total_sales_formatted: `Rp ${item.total_sales.toLocaleString('id-ID')}`,
+        }));
+
       return {
         totalOrderAmount,
         totalOrderAmountFormatted: `Rp ${totalOrderAmount.toLocaleString('id-ID')}`,
@@ -237,6 +266,7 @@ export class OverviewService {
 
         highestOrder,
         nextQueues,
+        institutionRanks,
         categorySummaries,
         monthlyData,
       };

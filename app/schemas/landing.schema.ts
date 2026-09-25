@@ -31,4 +31,5 @@ export interface LandingData {
   stats: LandingStats;
   products: LandingProductItem[];
   portfolioItems: LandingPortfolioItem[];
+  articles?: any[];
 }

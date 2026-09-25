@@ -7,7 +7,7 @@ import { handleFinanceAction } from '~/services/finance.service';
 import {
   DashboardHeaderWidget, TotalOrderAmountCardWidget, PaidRevenueCardWidget,
   ProductionCapacityCardWidget, ProductionVolumeChartWidget, HighestOrderCardWidget,
-  NextPrintQueueWidget, FloatingSupportButton,
+  NextPrintQueueWidget, CustomerRankingsWidget, FloatingSupportButton,
 } from '~/components/feature/DashboardWidgets';
 
 export const metaAccess: MetaAccessConfig = { roles: ['admin', 'manager', 'staff', 'finance'], permissions: ['finance:read'] };
@@ -39,6 +39,7 @@ export default createPage<InferLoader<typeof loader>>(({ data }) =>
       Div({ className: 'lg:col-span-8' }, ProductionVolumeChartWidget({ monthlyData: data?.monthlyData, categorySummaries: data?.categorySummaries })),
       Div({ className: 'lg:col-span-4 space-y-6' }, HighestOrderCardWidget({ highestOrder: data?.highestOrder }), NextPrintQueueWidget({ nextQueues: data?.nextQueues }))
     ),
+    CustomerRankingsWidget({ institutionRanks: data?.institutionRanks }),
     FloatingSupportButton()
   )
 );

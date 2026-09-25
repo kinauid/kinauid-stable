@@ -2,7 +2,7 @@ import { createPage, createMeta, cacheHeaders, CACHE_PRESETS, Div, successRespon
 import { withMiddleware, withTelemetry, rateLimitMiddleware } from '~/lib/middleware.server';
 import { ErrorCatch } from '~/lib/api';
 import { LandingService } from '~/services/landing.service';
-import { LandingNavbar, LandingHero, LandingStats, LandingProducts, LandingPortfolio, LandingFooter, FloatingWhatsAppButton } from '~/components/feature/LandingSections';
+import { LandingNavbar, LandingHero, LandingStats, LandingProducts, LandingPortfolio, LandingArticles, LandingFooter, FloatingWhatsAppButton } from '~/components/feature';
 
 import { getSessionData } from '~/lib/session.server';
 
@@ -28,11 +28,12 @@ export const loader = withMiddleware([withTelemetry('loader:landing'), rateLimit
 export default createPage<InferLoader<typeof loader>>((ctx) =>
   Div({ className: 'min-h-screen bg-[var(--customer-bg)] selection:bg-[var(--accent)]/30' },
     Div({ className: 'max-w-[1600px] mx-auto bg-[var(--card)] shadow-2xl relative min-h-screen overflow-hidden' },
-      LandingNavbar(ctx.data?.user || ctx.user),
+      LandingNavbar({ user: ctx.data?.user || ctx.user }),
       LandingHero(),
       LandingStats(ctx.data?.stats),
       LandingProducts(ctx.data?.products),
       LandingPortfolio(ctx.data?.portfolioItems),
+      LandingArticles(ctx.data?.articles),
       LandingFooter(),
     ),
     FloatingWhatsAppButton()
