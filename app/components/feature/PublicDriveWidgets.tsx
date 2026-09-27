@@ -947,7 +947,14 @@ export function PublicDriveWidget({ data, isSubmitting }: PublicDriveWidgetProps
                     {orderItems.length > 0 ? (
                       orderItems.map((item, idx) => {
                         const itemQty = Number(item.qty || 1);
-                        const itemPrice = Number(item.variant_price || item.unit_price || 0);
+                        const derivedUnitPrice =
+                          itemQty > 0 && (item.variant_final_price || item.subtotal)
+                            ? Math.round(Number(item.variant_final_price || item.subtotal) / itemQty)
+                            : 0;
+                        const itemPrice =
+                          derivedUnitPrice > 0
+                            ? derivedUnitPrice
+                            : (Number(item.price_rule_value) || Number(item.unit_price) || 0) + (Number(item.variant_price) || 0);
                         const itemTotal = Number(item.variant_final_price || item.subtotal || itemQty * itemPrice);
 
                         return (

@@ -847,14 +847,14 @@ export function OrderFormComponent({
                 'div',
                 {
                   key: idx,
-                  className: 'p-4 bg-white border border-slate-200 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center gap-3 transition-all hover:border-slate-300 shadow-2xs',
+                  className: 'p-3.5 sm:p-4 bg-white border border-slate-200 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3 transition-all hover:border-slate-300 shadow-2xs w-full min-w-0 max-w-full overflow-hidden',
                 },
                 createElement(
                   'div',
-                  { className: 'flex items-center gap-2 flex-1' },
+                  { className: 'flex items-center gap-2 flex-1 w-full min-w-0' },
                   createElement(
                     'span',
-                    { className: 'w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600' },
+                    { className: 'w-6 h-6 shrink-0 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600' },
                     idx + 1
                   ),
                   createElement(
@@ -862,7 +862,7 @@ export function OrderFormComponent({
                     {
                       value: item.productId,
                       onChange: (e: any) => handleSelectProduct(idx, e.target.value),
-                      className: 'flex-1 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]',
+                      className: 'flex-1 min-w-0 max-w-full w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] truncate',
                     },
                     createElement('option', { value: '' }, `-- Pilih Produk (${initialProducts.length}) --`),
                     initialProducts.map((p) =>
@@ -877,14 +877,14 @@ export function OrderFormComponent({
 
                 createElement(
                   'div',
-                  { className: 'w-full md:w-56' },
+                  { className: 'w-full min-w-0 md:w-56' },
                   createElement(
                     'select',
                     {
                       disabled: !item.productId || variants.length === 0,
                       value: item.variant_id ? String(item.variant_id) : '',
                       onChange: (e: any) => handleSelectVariant(idx, e.target.value),
-                      className: 'w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] disabled:opacity-50',
+                      className: 'w-full min-w-0 max-w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] disabled:opacity-50 truncate',
                     },
                     createElement('option', { value: '' }, variants.length === 0 ? 'Varian Standar' : 'Pilih Varian'),
                     variants.map((v) =>
@@ -899,10 +899,10 @@ export function OrderFormComponent({
 
                 createElement(
                   'div',
-                  { className: 'flex items-center gap-2' },
+                  { className: 'flex items-center gap-2 w-full md:w-auto' },
                   createElement(
                     'div',
-                    { className: 'w-24' },
+                    { className: 'w-24 min-w-[70px]' },
                     createElement('input', {
                       type: 'number',
                       min: 1,
@@ -910,13 +910,13 @@ export function OrderFormComponent({
                       value: item.quantity,
                       onChange: (e: any) => handleQtyChange(idx, e.target.value),
                       placeholder: 'Qty',
-                      className: 'w-full px-3 py-2.5 text-center rounded-xl border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] font-bold disabled:opacity-50',
+                      className: 'w-full px-2.5 py-2.5 text-center rounded-xl border border-slate-200 bg-white text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] font-bold disabled:opacity-50',
                     })
                   ),
 
                   createElement(
                     'div',
-                    { className: 'w-32 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 text-center truncate' },
+                    { className: 'flex-1 md:w-32 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 text-center truncate' },
                     Number(item.variant_final_price) > 0 ? formatCurrency(item.variant_final_price || 0) : 'Rp 0'
                   ),
 
@@ -926,7 +926,7 @@ export function OrderFormComponent({
                         {
                           type: 'button',
                           onClick: () => handleRemoveItem(idx),
-                          className: 'p-2.5 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all',
+                          className: 'p-2.5 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all shrink-0 cursor-pointer',
                           title: 'Hapus Baris Produk',
                         },
                         Icon('Trash2', { className: 'w-4 h-4' })

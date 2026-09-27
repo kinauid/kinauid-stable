@@ -169,7 +169,7 @@ export class OrderService {
   static async getOrders(state: OrderState = {}) {
     return cacheData(
       `orders_list:${JSON.stringify(state)}`,
-      60,
+      20,
       async () => {
         try {
           const where: Record<string, any> = { deleted_on: 'null' };
@@ -204,8 +204,8 @@ export class OrderService {
             where['year:order_date'] = parseInt(state.year, 10);
           }
 
-          // Sorting
-          let orderBy: [string, string] = ['created_on', 'desc'];
+          // Sorting - Default to newest ID descending so newly created orders immediately show first
+          let orderBy: [string, string] = ['id', 'desc'];
           if (state.sortBy) {
             const [col, dir] = state.sortBy.split(':');
             if (col) {
@@ -281,6 +281,7 @@ export class OrderService {
                   'product_name',
                   'qty',
                   'unit_price',
+                  'price_rule_value',
                   'subtotal',
                   'variant_name',
                   'variant_price',
@@ -553,6 +554,27 @@ export class OrderService {
         body: JSON.stringify({
           table: 'orders',
           where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
+          include: [
+            {
+              table: 'order_items',
+              alias: 'order_items',
+              foreign_key: 'order_number',
+              reference_key: 'order_number',
+              where: { deleted_on: 'null' },
+              columns: [
+                'id',
+                'product_id',
+                'product_name',
+                'qty',
+                'unit_price',
+                'price_rule_value',
+                'subtotal',
+                'variant_name',
+                'variant_price',
+                'variant_final_price',
+              ],
+            },
+          ],
           size: 1,
         }),
       });

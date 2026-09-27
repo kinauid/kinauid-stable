@@ -11,7 +11,7 @@ export const meta = createMeta({
   title: 'Kinau ID — Cetak ID Card, Lanyard, Jersey & Apparel Hub',
   description: 'Solusi percetakan profesional dan konveksi jersey, kaos, kemeja, serta merchandise event berkualitas tinggi.',
 });
-export const headers = cacheHeaders(CACHE_PRESETS.semiStatic);
+export const headers = cacheHeaders(CACHE_PRESETS.dynamic);
 
 export const loader = withMiddleware([withTelemetry('loader:landing'), rateLimitMiddleware({ limit: 120, windowMs: 60_000 })], async ({ request }) => {
   try {

@@ -16,7 +16,7 @@ export const LandingService = {
   async getLandingData(): Promise<LandingData> {
     return cacheData(
       'public:landing:data',
-      30,
+      5,
       async () => {
         try {
           // 1. Fetch Products for display (deleted = 0 & show_in_dashboard = 1)
@@ -153,7 +153,7 @@ export const LandingService = {
           };
         }
       },
-      { tags: ['landing'], staleWhileRevalidateSeconds: 60 }
+      { tags: ['landing'] }
     );
   },
 };

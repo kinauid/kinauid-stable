@@ -259,7 +259,7 @@ export function createOrderHistoryTableColumns(
             title: 'Lihat Nota',
             variant: 'warning',
             onClick: () => {
-              modals.open('VIEW_NOTA_MODAL', { order: row });
+              modals.open('VIEW_NOTA_MODAL', { order: row, send });
             },
           }),
           createElement(TableActionButton, {
@@ -384,7 +384,7 @@ export function renderOrderHistoryMobileCard(
         variant: 'outline',
         size: 'sm',
         onClick: () => {
-          modals.open('VIEW_NOTA_MODAL', { order });
+          modals.open('VIEW_NOTA_MODAL', { order, send });
         },
       })
     )

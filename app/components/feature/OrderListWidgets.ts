@@ -1,4 +1,5 @@
-import React, { createElement, useState, type ReactNode } from 'react';
+import React, { createElement, useState, useEffect, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import {
   Div,
   Row,
@@ -781,7 +782,7 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
             title: 'Lihat Nota',
             variant: 'warning',
             onClick: () => {
-              modals.open('VIEW_NOTA_MODAL', { order: row });
+              modals.open('VIEW_NOTA_MODAL', { order: row, send });
             },
           }),
           createElement(TableActionButton, {
@@ -1475,7 +1476,7 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
       'div',
       {
         ref,
-        className: `p-6 sm:p-8 bg-white text-gray-800 font-sans w-full max-w-[210mm] mx-auto min-h-[297mm] flex flex-col print:p-0 print:max-w-none print:min-h-0 print:w-full ${className}`,
+        className: `printable-nota p-6 sm:p-8 bg-white text-gray-800 font-sans w-full max-w-[210mm] mx-auto min-h-[297mm] flex flex-col print:p-0 print:max-w-none print:min-h-0 print:w-full ${className}`,
       },
       // Content Wrapper
       createElement(
@@ -1627,13 +1628,18 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
             'tbody',
             { className: 'divide-y divide-gray-200' },
             resolvedItems.map((item: any, idx: number) => {
+              const itemQty = Number(item.qty || 1);
+              const derivedUnitPrice =
+                itemQty > 0 && (item.variant_final_price || item.subtotal)
+                  ? Math.round(Number(item.variant_final_price || item.subtotal) / itemQty)
+                  : 0;
               const unitPrice =
-                (Number(item.price_rule_value) || 0) + (Number(item.variant_price) || 0) ||
-                Number(item.unit_price) ||
-                0;
+                derivedUnitPrice > 0
+                  ? derivedUnitPrice
+                  : (Number(item.price_rule_value) || Number(item.unit_price) || 0) + (Number(item.variant_price) || 0);
               const finalPrice =
                 Number(item.variant_final_price) ||
-                (unitPrice > 0 ? unitPrice * (Number(item.qty) || 1) : Number(item.subtotal) || 0);
+                (unitPrice > 0 ? unitPrice * itemQty : Number(item.subtotal) || 0);
 
               return createElement(
                 'tr',
@@ -1835,11 +1841,44 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         dangerouslySetInnerHTML: {
           __html: `
             @media print {
-              body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-              @page { margin: 10mm; size: auto; }
-              .bg-gray-50 { background-color: #f9fafb !important; }
-              .bg-gray-200 { background-color: #e5e7eb !important; }
-              .no-print { display: none !important; }
+              body * {
+                visibility: hidden !important;
+              }
+              .printable-nota, .printable-nota * {
+                visibility: visible !important;
+              }
+              .printable-nota {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 100% !important;
+                margin: 0 !important;
+                padding: 10mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                z-index: 999999 !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+              @page {
+                size: A4;
+                margin: 0;
+              }
+              body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background: white !important;
+              }
+              .bg-gray-50 {
+                background-color: #f9fafb !important;
+              }
+              .bg-gray-200 {
+                background-color: #e5e7eb !important;
+              }
             }
           `,
         },
@@ -1854,9 +1893,17 @@ PrintNotaTemplate.displayName = 'PrintNotaTemplate';
 // View Nota Modal Component
 // ============================================================================
 
-export function ViewNotaModal({ open, onClose, order }: any) {
+export function ViewNotaModal({ open, onClose, order, send }: any) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(order?.status || 'pending');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    if (order?.status) {
+      setCurrentStatus(order.status);
+    }
+  }, [order?.status]);
 
   if (!open || !order) return null;
 
@@ -1884,6 +1931,28 @@ export function ViewNotaModal({ open, onClose, order }: any) {
       navigator.clipboard.writeText('7366544822');
       setCopiedAccount(true);
       setTimeout(() => setCopiedAccount(false), 2000);
+    }
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    setCurrentStatus(newStatus);
+    setIsUpdatingStatus(true);
+    try {
+      if (send?.submit) {
+        send.submit(
+          { intent: 'update-status', id: order.id, status: newStatus },
+          { method: 'post' }
+        );
+      }
+      toast.success(
+        `Status produksi berhasil diubah ke: ${
+          ORDER_STATUS_OPTIONS.find((o) => o.value === newStatus)?.label || newStatus
+        }`
+      );
+    } catch {
+      toast.error('Gagal memperbarui status pesanan');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -1957,7 +2026,31 @@ export function ViewNotaModal({ open, onClose, order }: any) {
                 Icon('Eye', { className: 'w-3.5 h-3.5 text-blue-600' }),
                 'Lihat Bukti Bayar'
               )
-            : null
+            : null,
+          // Quick Status Changer in Modal Header
+          createElement(
+            'div',
+            {
+              className:
+                'flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-2xs',
+            },
+            createElement('span', { className: 'text-[11px] font-bold text-slate-500 uppercase' }, 'Status:'),
+            createElement(
+              'select',
+              {
+                value: currentStatus,
+                onChange: (e: any) => handleStatusChange(e.target.value),
+                disabled: isUpdatingStatus,
+                className: 'text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer',
+              },
+              ORDER_STATUS_OPTIONS.filter((o) => o.value !== 'all').map((opt) =>
+                createElement('option', { key: opt.value, value: opt.value }, opt.label)
+              )
+            ),
+            isUpdatingStatus
+              ? createElement('span', { className: 'text-[10px] text-blue-600 animate-pulse' }, '...')
+              : null
+          )
         ),
         createElement(
           'button',
@@ -1987,7 +2080,7 @@ export function ViewNotaModal({ open, onClose, order }: any) {
             className:
               'bg-white shadow-md rounded-lg overflow-hidden border border-slate-200/80 mx-auto print:shadow-none print:border-none print:rounded-none',
           },
-          createElement(PrintNotaTemplate, { order })
+          createElement(PrintNotaTemplate, { order: { ...order, status: currentStatus } })
         ),
         // Customer Review Section (if present)
         order.review || order.rating
@@ -2143,6 +2236,32 @@ export function renderOrderMobileCard(order: OrderItem, index: number, send: any
       createElement('span', { className: 'font-bold text-slate-900' }, `Rp ${(order.grand_total || 0).toLocaleString('id-ID')}`)
     ),
 
+    // Status Produksi Selector on Mobile
+    createElement(
+      'div',
+      { className: 'flex items-center justify-between gap-2 py-1.5 border-b border-slate-100' },
+      createElement('span', { className: 'text-xs text-slate-500 font-medium' }, 'Status Produksi:'),
+      createElement(
+        'select',
+        {
+          value: order.status,
+          onChange: (e: any) => {
+            send.submit({ intent: 'update-status', id: order.id, status: e.target.value }, { method: 'post' });
+            toast.success(
+              `Status diubah ke: ${
+                ORDER_STATUS_OPTIONS.find((o) => o.value === e.target.value)?.label || e.target.value
+              }`
+            );
+          },
+          className:
+            'text-xs font-bold px-2.5 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs text-slate-800 focus:ring-1 focus:ring-[#103557] outline-none cursor-pointer',
+        },
+        ORDER_STATUS_OPTIONS.filter((o) => o.value !== 'all').map((opt) =>
+          createElement('option', { key: opt.value, value: opt.value }, opt.label)
+        )
+      )
+    ),
+
     // Payment proof row on mobile
     createElement(
       'div',
@@ -2171,7 +2290,7 @@ export function renderOrderMobileCard(order: OrderItem, index: number, send: any
           title: 'Nota',
           variant: 'warning',
           onClick: () => {
-            modals.open('VIEW_NOTA_MODAL', { order });
+            modals.open('VIEW_NOTA_MODAL', { order, send });
           },
         }),
         createElement(TableActionButton, {

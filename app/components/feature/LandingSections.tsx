@@ -17,25 +17,7 @@ export function LandingNavbar(props?: { user?: any } | any) {
               window.location.href = '/';
             }}
           />
-          <div className="flex items-center gap-3.5">
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = '/articles';
-              }}
-              className="px-4 py-2 rounded-full border border-slate-300 text-slate-700 text-xs font-bold bg-transparent hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              Artikel &amp; Edukasi
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = '/katalog';
-              }}
-              className="px-4 py-2 rounded-full border border-[#002660] text-[#002660] text-xs font-bold bg-transparent hover:bg-[#002660]/5 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              Lihat Katalog
-            </button>
+          <div className="flex items-center gap-3">
             {user ? (
               <button
                 type="button"
@@ -46,9 +28,9 @@ export function LandingNavbar(props?: { user?: any } | any) {
                       ? '/customer/orders'
                       : '/app/dashboard';
                 }}
-                className="px-5 py-2 rounded-full bg-[#103557] hover:bg-[#164e78] text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                className="px-5 py-2.5 rounded-full bg-[#103557] hover:bg-[#164e78] text-white text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md"
               >
-                {Icon('LayoutDashboard', { size: 14 })}
+                {Icon('LayoutDashboard', { size: 15 })}
                 <span>Dashboard</span>
               </button>
             ) : (
@@ -57,9 +39,9 @@ export function LandingNavbar(props?: { user?: any } | any) {
                 onClick={() => {
                   window.location.href = '/login';
                 }}
-                className="px-5 py-2 rounded-full bg-[#002660] text-white text-xs font-bold hover:bg-[#002660]/90 transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                className="px-6 py-2.5 rounded-full bg-[#002660] hover:bg-[#103557] text-white text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-95"
               >
-                {Icon('LogIn', { size: 14, className: 'rotate-180' })}
+                {Icon('LogIn', { size: 15, className: 'rotate-180' })}
                 <span>Masuk</span>
               </button>
             )}

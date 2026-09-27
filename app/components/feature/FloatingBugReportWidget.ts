@@ -58,10 +58,10 @@ export function FloatingBugReportWidget(
   return createElement(
     "div",
     { className: "select-none" },
-    // 1. Fixed Floating Trigger Button (Bottom Right)
+    // 1. Fixed Floating Trigger Button (Bottom Right - positioned higher on mobile to avoid blocking inputs)
     createElement(
       "div",
-      { className: "fixed bottom-10 right-2 z-40 group" },
+      { className: "fixed bottom-24 right-3 sm:bottom-10 sm:right-4 z-30 group" },
       createElement(
         "button",
         {
