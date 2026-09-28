@@ -17,6 +17,7 @@ import {
   VirtualOfficeTeamChatModal,
   VirtualOfficeTeamGrid,
 } from './virtual-office';
+import { OfficeService } from '~/services/office.service';
 
 export type { VirtualOffice3DProps };
 
@@ -589,77 +590,41 @@ export function VirtualOffice3D({
     const sentText = chatMessage.trim();
     setChatMessage('');
 
-    setTimeout(() => {
-      const lower = sentText.toLowerCase();
-      const tablesList = targetAg.contextConfig?.tables || ['accounting_coa', 'accounting_ledger_mutations'];
-
-      let agentResponse: VirtualOfficeChatMessage;
-
-      if (/catat|bayar|beli|terima|input|transfer|masukkan|posting/i.test(lower)) {
-        const amountMatch = sentText.match(/(?:rp|idr)?\s*([\d.,]+(?:\.\d{2})?)/i);
-        const amt = amountMatch
-          ? parseInt(amountMatch[1].replace(/\./g, '').replace(/,/g, ''), 10) || 1250000
-          : 750000;
-
-        const isExpense = !/terima|masuk|gaji|pendapatan|omset/i.test(lower);
-
-        agentResponse = {
+    // Query live context & AI response via OfficeService from PostgreSQL
+    (async () => {
+      try {
+        const reply = await OfficeService.chatAgentAi(targetAg.id, sentText);
+        const agentResponse: VirtualOfficeChatMessage = {
           sender: 'agent',
-          text: `Saya telah menganalisis instruksi Anda berdasarkan SOP Skill dan context tabel **[${tablesList.join(', ')}]**. Berikut draft jurnal transaksi berpasangan (Double-Entry) yang siap diposting:`,
+          text: reply.text,
           time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-          replyType: 'ACTION_DRAFT',
-          actionPayload: {
-            action: 'POST_JOURNAL_ENTRY',
-            date: new Date().toISOString().split('T')[0],
-            description: sentText.slice(0, 80),
-            totalAmount: amt,
-            entries: [
-              {
-                accountCode: isExpense ? '5-1002' : '1-1001',
-                accountName: isExpense ? 'Beban Operasional & Keperluan Kantor' : 'Kas & Bank Mandiri',
-                direction: 'DEBIT',
-                amount: amt,
-              },
-              {
-                accountCode: isExpense ? '1-1001' : '4-1001',
-                accountName: isExpense ? 'Kas & Bank Mandiri' : 'Pendapatan Penjualan Merchandise',
-                direction: 'CREDIT',
-                amount: amt,
-              },
-            ],
-            isBalanced: true,
-            tableAffected: ['accounting_ledger_journals', 'accounting_ledger_mutations'],
-          },
+          replyType: reply.replyType,
+          actionPayload: reply.actionPayload,
         };
-      } else if (/laporan|neraca|saldo|anggaran|sisa|rekap|cek|audit|ringkasan/i.test(lower)) {
-        agentResponse = {
+
+        setChatHistories((prev) => {
+          const existing = prev[targetAg.id] || [];
+          return {
+            ...prev,
+            [targetAg.id]: [...existing, agentResponse],
+          };
+        });
+      } catch (err: any) {
+        const errResponse: VirtualOfficeChatMessage = {
           sender: 'agent',
-          text: `📊 **Ringkasan Kilat Data (${targetAg.name})**\n\n` +
-            `• **Sumber Konteks:** Tabel \`${tablesList.join(', ')}\`\n` +
-            `• **Saldo Kas Operasional:** Rp 48.500.000 (🟢 Likuid)\n` +
-            `• **Realisasi Belanja Bulan Ini:** Rp 14.200.000 / Plafon Rp 20.000.000 (71%)\n` +
-            `• **Status Jurnal:** 100% Balanced (Debit = Kredit)\n\n` +
-            `💡 **Analisis AI:** Arus kas stabil. Pos belanja server & tinta mendekati 80%, pertimbangkan penyesuaian plafon di tabel \`accounting_budgets\`.`,
-          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-          replyType: 'FAST_REPORT',
-        };
-      } else {
-        agentResponse = {
-          sender: 'agent',
-          text: `Siap! Saya memahami instruksi Anda berdasarkan persona **"${(targetAg.skillPrompt || targetAg.role).slice(0, 60)}..."** dan tabel [${tablesList.join(', ')}]. Ada data mutasi atau laporan lain yang ingin diproses?`,
+          text: `Gagal memproses permintaan: ${err?.message || 'Koneksi backend terputus'}. Silakan coba lagi.`,
           time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
           replyType: 'CONVERSATION',
         };
+        setChatHistories((prev) => {
+          const existing = prev[targetAg.id] || [];
+          return {
+            ...prev,
+            [targetAg.id]: [...existing, errResponse],
+          };
+        });
       }
-
-      setChatHistories((prev) => {
-        const existing = prev[targetAg.id] || [];
-        return {
-          ...prev,
-          [targetAg.id]: [...existing, agentResponse],
-        };
-      });
-    }, 600);
+    })();
   };
 
   const handleStartCall = () => {

@@ -371,6 +371,10 @@ export class OfficeService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql, params, limit }),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+    }
     return await res.json();
   }
 
@@ -384,6 +388,10 @@ export class OfficeService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tables, select_all: selectAll, limit }),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+    }
     return await res.json();
   }
 
@@ -426,7 +434,37 @@ export class OfficeService {
     const liveDebit = Number(realMetrics?.totalDebit) || 58117000;
     const liveCredit = Number(realMetrics?.totalCredit) || 58117000;
 
-    // 1. Pencatatan Aktif (Draft Jurnal Double-Entry D/K)
+    // 1. Data Transaksi & Mutasi Terakhir (Live Query dari account_ledger_mutations)
+    if (/transaksi|mutasi|history|riwayat|terakhir/i.test(lower)) {
+      let mutationRows: any[] = [];
+      try {
+        const qRes = await this.executeOpenQuery(
+          'SELECT id, trx_code, trx_date, account_code, account_name, notes, debit, credit FROM account_ledger_mutations WHERE deleted = 0 ORDER BY id DESC LIMIT 5'
+        );
+        if (qRes?.data?.rows && Array.isArray(qRes.data.rows)) {
+          mutationRows = qRes.data.rows;
+        }
+      } catch (err: any) {
+        console.warn('[OfficeService] executeOpenQuery error:', err?.message);
+      }
+
+      if (mutationRows.length > 0) {
+        const listText = mutationRows.map((m: any, idx: number) => {
+          const isDb = Number(m.debit) > 0;
+          const nominal = isDb ? Number(m.debit) : Number(m.credit);
+          const dir = isDb ? '📥 MASUK (Debit)' : '📤 KELUAR (Kredit)';
+          const tDate = m.trx_date ? new Date(m.trx_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+          return `**${idx + 1}. [${m.trx_code || 'TRX'}]** ${dir} **Rp ${nominal.toLocaleString('id-ID')}**\n   • Akun: \`${m.account_code || '-'}\` ${m.account_name || '-'}\n   • Tanggal: ${tDate} | Ref: _${m.notes || '-'}_`;
+        }).join('\n\n');
+
+        return {
+          replyType: 'FAST_REPORT',
+          text: `📑 **5 Data Transaksi Terakhir di Database PostgreSQL (${agent.name} - ${agent.role})**:\n\n${listText}\n\n💡 **Status:** Terverifikasi langsung dari tabel \`account_ledger_mutations\` (Total mutasi: ${liveMutations} baris).`,
+        };
+      }
+    }
+
+    // 2. Pencatatan Aktif (Draft Jurnal Double-Entry D/K)
     if (/catat|bayar|beli|terima|input|transfer|masukkan|posting/i.test(lower)) {
       const amountMatch = message.match(/(?:rp|idr)?\s*([\d.,]+(?:\.\d{2})?)/i);
       const amt = amountMatch
