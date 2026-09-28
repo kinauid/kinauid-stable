@@ -316,6 +316,10 @@ import {
   ProductDetailModal,
   ProductFilterModal,
 } from '~/components/feature/ProductListWidgets';
+import {
+  VirtualOfficeAgentConfigModal,
+  VirtualOfficeAgentManagerModal,
+} from '~/components/feature/virtual-office';
 
 const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   CREATE_USER_MODAL: CreateUserModal,
@@ -340,6 +344,9 @@ const MODAL_REGISTRY: Record<string, React.ComponentType<any>> = {
   CREATE_CATEGORY_MODAL: CreateOrEditCategoryModal,
   VIEW_PRODUCT_DETAIL_MODAL: ProductDetailModal,
   PRODUCT_FILTER_MODAL: ProductFilterModal,
+  CREATE_AGENT_MODAL: (props: any) => createElement(VirtualOfficeAgentConfigModal, { ...props, isCreateMode: true }),
+  EDIT_AGENT_MODAL: (props: any) => createElement(VirtualOfficeAgentConfigModal, { ...props, isCreateMode: false }),
+  MANAGE_AGENTS_MODAL: VirtualOfficeAgentManagerModal,
 };
 
 export function registerModal(id: string, component: React.ComponentType<any>) {

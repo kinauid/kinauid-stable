@@ -9,6 +9,10 @@ export interface VirtualOffice3DProps {
   onUpdateStatus?: (agentId: string, status: AgentStatus) => void;
   onAssignTask?: (agentId: string, task: string, project?: string) => void;
   onPingAgent?: (agentId: string) => void;
+  onCreateAgent?: (data: any) => void;
+  onUpdateAgentConfig?: (config: any) => void;
+  onDeleteAgent?: (agentId: string) => void;
+  onConfirmMutation?: (payload: any) => void;
   className?: string;
 }
 
@@ -45,14 +49,14 @@ export const DIVISION_CONFIG: Record<Division, DivisionConfigItem> = {
   sales: {
     cameraTarget: [-6.5, 0.8, -1.0],
     icon: 'Users',
-    color: '#8b5cf6',
+    color: '#0284c7',
     label: 'Sales Studio',
     shortName: 'Sales',
   },
   development: {
     cameraTarget: [6.5, 0.8, -1.0],
     icon: 'ListTodo',
-    color: '#6366f1',
+    color: '#2563eb',
     label: 'Delivery Studio',
     shortName: 'Delivery',
   },

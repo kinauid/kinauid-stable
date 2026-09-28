@@ -147,6 +147,10 @@ export function successResponse<T = any>(data: T, options?: SuccessResponseOptio
     if (options.meta !== undefined) meta = options.meta;
   }
 
+  if (data && typeof data === 'object' && 'message' in data && typeof (data as any).message === 'string') {
+    meta = { message: (data as any).message, ...meta };
+  }
+
   const payload: ApiSuccessPayload<T> = {
     success: true,
     data,

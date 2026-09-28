@@ -23,6 +23,10 @@ export default createPage<InferLoader<typeof loader>>(({ data, send }) =>
         onUpdateStatus: (agentId, status) => send.submit({ intent: 'update-agent-status', agentId, status }, { method: 'post' }),
         onAssignTask: (agentId, task, project) => send.submit({ intent: 'assign-agent-task', agentId, task, project: project || '' }, { method: 'post' }),
         onPingAgent: (agentId) => send.submit({ intent: 'ping-agent', agentId }, { method: 'post' }),
+        onCreateAgent: (payload) => send.submit({ intent: 'create-agent', payload: JSON.stringify(payload) }, { method: 'post' }),
+        onUpdateAgentConfig: (config) => send.submit({ intent: 'update-agent-config', config: JSON.stringify(config) }, { method: 'post' }),
+        onDeleteAgent: (agentId) => send.submit({ intent: 'delete-agent', agentId }, { method: 'post' }),
+        onConfirmMutation: (payload) => send.submit({ intent: 'confirm-mutation', payload: JSON.stringify(payload) }, { method: 'post' }),
       })
     )
   )

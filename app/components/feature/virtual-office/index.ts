@@ -3,6 +3,8 @@ export * from './officeMeshFactory';
 export * from './VirtualOfficeToolbar';
 export * from './VirtualOfficeIdentityBadges';
 export * from './VirtualOfficeChatModal';
+export * from './VirtualOfficeAgentConfigModal';
+export * from './VirtualOfficeAgentManagerModal';
 export * from './VirtualOfficeTaskModal';
 export * from './VirtualOfficeTeamChatModal';
 export * from './VirtualOfficeTeamGrid';

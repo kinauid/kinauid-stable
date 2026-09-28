@@ -291,10 +291,10 @@ export function createPage<
 
       if (typeof resp === 'object') {
         if (resp.success === true) {
-          const msg = resp.meta?.message || resp.message;
+          const msg = resp.meta?.message || resp.data?.message || resp.message;
           if (msg && typeof msg === 'string') toast.success(msg);
         } else if (resp.success === false || resp.error) {
-          const err = resp.error?.message || resp.error || resp.message;
+          const err = resp.error?.message || resp.data?.error || resp.error || resp.message;
           if (err) toast.error(typeof err === 'string' ? err : 'Terjadi kesalahan sistem');
         }
       }

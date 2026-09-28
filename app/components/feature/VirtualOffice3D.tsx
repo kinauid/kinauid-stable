@@ -11,6 +11,8 @@ import {
   VirtualOfficeToolbar,
   VirtualOfficeIdentityBadges,
   VirtualOfficeChatModal,
+  VirtualOfficeAgentConfigModal,
+  VirtualOfficeAgentManagerModal,
   VirtualOfficeTaskModal,
   VirtualOfficeTeamChatModal,
   VirtualOfficeTeamGrid,
@@ -26,6 +28,10 @@ export function VirtualOffice3D({
   onUpdateStatus: _onUpdateStatus,
   onAssignTask,
   onPingAgent: _onPingAgent,
+  onCreateAgent,
+  onUpdateAgentConfig,
+  onDeleteAgent,
+  onConfirmMutation,
   className = '',
 }: VirtualOffice3DProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -62,6 +68,11 @@ export function VirtualOffice3D({
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isTeamChatOpen, setIsTeamChatOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isAgentManagerOpen, setIsAgentManagerOpen] = useState(false);
+  const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
+  const [selectedAgentForEdit, setSelectedAgentForEdit] = useState<Agent | null>(null);
+
   const [taskInput, setTaskInput] = useState('');
   const [projectInput, setProjectInput] = useState('');
   const [chatMessage, setChatMessage] = useState('');
@@ -565,7 +576,7 @@ export function VirtualOffice3D({
           sender: 'agent',
           text:
             targetAg.initialMessage ||
-            `Halo! Saya ${targetAg.name}, ${targetAg.role}. Ada yang bisa saya bantu terkait tugas "${targetAg.currentTask}"?`,
+            `Halo! Saya ${targetAg.name} (${targetAg.role}). Saya siap membantu pencatatan transaksi & analisis keuangan dengan acuan tabel [${(targetAg.contextConfig?.tables || ['accounting_coa']).join(', ')}].`,
           time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         },
       ];
@@ -579,24 +590,73 @@ export function VirtualOffice3D({
     setChatMessage('');
 
     setTimeout(() => {
-      const replies = [
-        `Siap, pesan terkait "${sentText}" sudah saya catat! Saya segera koordinasikan dengan tim ${DIVISION_CONFIG[targetAg.division]?.shortName || ''}.`,
-        `Oke! Untuk tugas "${targetAg.currentTask}", saya pastikan progressnya selesai sesuai milestone proyek "${targetAg.currentProject}".`,
-        `Terima kasih masukannya! Saya sesuaikan komponen workflow ini dan kabari lagi setelah update terbaru selesai.`,
-      ];
-      const reply = replies[Math.floor(Math.random() * replies.length)];
+      const lower = sentText.toLowerCase();
+      const tablesList = targetAg.contextConfig?.tables || ['accounting_coa', 'accounting_ledger_mutations'];
+
+      let agentResponse: VirtualOfficeChatMessage;
+
+      if (/catat|bayar|beli|terima|input|transfer|masukkan|posting/i.test(lower)) {
+        const amountMatch = sentText.match(/(?:rp|idr)?\s*([\d.,]+(?:\.\d{2})?)/i);
+        const amt = amountMatch
+          ? parseInt(amountMatch[1].replace(/\./g, '').replace(/,/g, ''), 10) || 1250000
+          : 750000;
+
+        const isExpense = !/terima|masuk|gaji|pendapatan|omset/i.test(lower);
+
+        agentResponse = {
+          sender: 'agent',
+          text: `Saya telah menganalisis instruksi Anda berdasarkan SOP Skill dan context tabel **[${tablesList.join(', ')}]**. Berikut draft jurnal transaksi berpasangan (Double-Entry) yang siap diposting:`,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          replyType: 'ACTION_DRAFT',
+          actionPayload: {
+            action: 'POST_JOURNAL_ENTRY',
+            date: new Date().toISOString().split('T')[0],
+            description: sentText.slice(0, 80),
+            totalAmount: amt,
+            entries: [
+              {
+                accountCode: isExpense ? '5-1002' : '1-1001',
+                accountName: isExpense ? 'Beban Operasional & Keperluan Kantor' : 'Kas & Bank Mandiri',
+                direction: 'DEBIT',
+                amount: amt,
+              },
+              {
+                accountCode: isExpense ? '1-1001' : '4-1001',
+                accountName: isExpense ? 'Kas & Bank Mandiri' : 'Pendapatan Penjualan Merchandise',
+                direction: 'CREDIT',
+                amount: amt,
+              },
+            ],
+            isBalanced: true,
+            tableAffected: ['accounting_ledger_journals', 'accounting_ledger_mutations'],
+          },
+        };
+      } else if (/laporan|neraca|saldo|anggaran|sisa|rekap|cek|audit|ringkasan/i.test(lower)) {
+        agentResponse = {
+          sender: 'agent',
+          text: `📊 **Ringkasan Kilat Data (${targetAg.name})**\n\n` +
+            `• **Sumber Konteks:** Tabel \`${tablesList.join(', ')}\`\n` +
+            `• **Saldo Kas Operasional:** Rp 48.500.000 (🟢 Likuid)\n` +
+            `• **Realisasi Belanja Bulan Ini:** Rp 14.200.000 / Plafon Rp 20.000.000 (71%)\n` +
+            `• **Status Jurnal:** 100% Balanced (Debit = Kredit)\n\n` +
+            `💡 **Analisis AI:** Arus kas stabil. Pos belanja server & tinta mendekati 80%, pertimbangkan penyesuaian plafon di tabel \`accounting_budgets\`.`,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          replyType: 'FAST_REPORT',
+        };
+      } else {
+        agentResponse = {
+          sender: 'agent',
+          text: `Siap! Saya memahami instruksi Anda berdasarkan persona **"${(targetAg.skillPrompt || targetAg.role).slice(0, 60)}..."** dan tabel [${tablesList.join(', ')}]. Ada data mutasi atau laporan lain yang ingin diproses?`,
+          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          replyType: 'CONVERSATION',
+        };
+      }
+
       setChatHistories((prev) => {
         const existing = prev[targetAg.id] || [];
         return {
           ...prev,
-          [targetAg.id]: [
-            ...existing,
-            {
-              sender: 'agent',
-              text: reply,
-              time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            },
-          ],
+          [targetAg.id]: [...existing, agentResponse],
         };
       });
     }, 600);
@@ -639,6 +699,8 @@ export function VirtualOffice3D({
         onToggleFullscreen={toggleFullscreen}
         onAdjustZoom={adjustZoom}
         onOpenTeamChat={() => setIsTeamChatOpen(true)}
+        onOpenAgentManager={() => setIsAgentManagerOpen(true)}
+        onOpenCreateAgent={() => setIsCreateAgentOpen(true)}
         onFocusAgent={focusAgentDesk}
       />
 
@@ -674,6 +736,31 @@ export function VirtualOffice3D({
             onClearCallStatus={() => setCallStatusMsg(null)}
             onChatMessageChange={setChatMessage}
             onSendChat={handleSendChat}
+            onOpenConfig={() => {
+              setSelectedAgentForEdit(activeAgent);
+              setIsConfigModalOpen(true);
+            }}
+            onConfirmMutation={(payload) => {
+              if (onConfirmMutation) {
+                onConfirmMutation(payload);
+              }
+              if (activeAgent) {
+                setChatHistories((prev) => {
+                  const existing = prev[activeAgent.id] || [];
+                  return {
+                    ...prev,
+                    [activeAgent.id]: [
+                      ...existing,
+                      {
+                        sender: 'agent',
+                        text: `✅ Transaksi jurnal berhasil diposting ke tabel \`accounting_ledger_mutations\` & \`accounting_ledger_journals\`! Saldo kas & buku besar terupdate.`,
+                        time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                      },
+                    ],
+                  };
+                });
+              }
+            }}
           />
 
           {/* Three.js WebGL Viewport Container */}
@@ -695,7 +782,7 @@ export function VirtualOffice3D({
             Drag: putar · Klik kanan / dua jari: geser · Scroll / pinch: zoom
           </div>
           <div>
-            <span className="text-slate-600 font-semibold">Klik orang / meja untuk chat</span>
+            <span className="text-slate-600 font-semibold">Klik orang / meja untuk chat & kelola</span>
           </div>
         </div>
       </div>
@@ -726,6 +813,95 @@ export function VirtualOffice3D({
         onTaskInputChange={setTaskInput}
         onProjectInputChange={setProjectInput}
         onSubmit={handleTaskSubmit}
+      />
+
+      {/* 6. All Agents Manager Modal */}
+      <VirtualOfficeAgentManagerModal
+        isOpen={isAgentManagerOpen}
+        agents={agents}
+        onClose={() => setIsAgentManagerOpen(false)}
+        onAddNewAgent={() => setIsCreateAgentOpen(true)}
+        onEditAgent={(ag) => {
+          setSelectedAgentForEdit(ag);
+          setIsConfigModalOpen(true);
+        }}
+        onDeleteAgent={(agentId) => {
+          if (onDeleteAgent) {
+            onDeleteAgent(agentId);
+          }
+          if (activeAgent?.id === agentId) {
+            handleCloseChat();
+          }
+        }}
+        onFocusAgent={focusAgentDesk}
+        onChatAgent={focusAgentDesk}
+      />
+
+      {/* 7. Create New Agent Modal */}
+      <VirtualOfficeAgentConfigModal
+        isOpen={isCreateAgentOpen}
+        agent={null}
+        isCreateMode={true}
+        onClose={() => setIsCreateAgentOpen(false)}
+        onSaveConfig={(formData) => {
+          if (onCreateAgent) {
+            onCreateAgent(formData);
+          }
+        }}
+      />
+
+      {/* 8. Edit Agent Profile, Skill & Context Modal */}
+      <VirtualOfficeAgentConfigModal
+        isOpen={isConfigModalOpen}
+        agent={selectedAgentForEdit || activeAgent}
+        isCreateMode={false}
+        onClose={() => {
+          setIsConfigModalOpen(false);
+          setSelectedAgentForEdit(null);
+        }}
+        onDeleteAgent={(agentId) => {
+          if (onDeleteAgent) {
+            onDeleteAgent(agentId);
+          }
+          if (activeAgent?.id === agentId) {
+            handleCloseChat();
+          }
+          setIsConfigModalOpen(false);
+          setSelectedAgentForEdit(null);
+        }}
+        onSaveConfig={(config) => {
+          const targetAgent = selectedAgentForEdit || activeAgent;
+          if (onUpdateAgentConfig) {
+            onUpdateAgentConfig(config);
+          }
+          if (targetAgent) {
+            const updated = {
+              ...targetAgent,
+              name: config.name,
+              role: config.role,
+              description: config.description,
+              division: config.division,
+              status: config.status,
+              avatarColor: config.avatarColor,
+              shirtColor: config.shirtColor,
+              skillPrompt: config.skillPrompt,
+              apiConfig: {
+                baseUrl: config.apiBaseUrl,
+                provider: config.provider,
+                model: config.model,
+                temperature: config.temperature,
+              },
+              contextConfig: {
+                selectAll: config.selectAllTables,
+                tables: config.tables,
+              },
+              capabilities: config.capabilities,
+            };
+            if (activeAgent?.id === targetAgent.id) {
+              setActiveAgent(updated);
+            }
+          }
+        }}
       />
     </div>
   );

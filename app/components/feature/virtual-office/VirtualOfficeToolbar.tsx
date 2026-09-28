@@ -15,6 +15,8 @@ export interface VirtualOfficeToolbarProps {
   onToggleFullscreen: () => void;
   onAdjustZoom: (delta: number) => void;
   onOpenTeamChat: () => void;
+  onOpenAgentManager: () => void;
+  onOpenCreateAgent: () => void;
   onFocusAgent: (agent: Agent) => void;
 }
 
@@ -30,6 +32,8 @@ export function VirtualOfficeToolbar({
   onToggleFullscreen,
   onAdjustZoom,
   onOpenTeamChat,
+  onOpenAgentManager,
+  onOpenCreateAgent,
   onFocusAgent,
 }: VirtualOfficeToolbarProps): React.ReactElement {
   const divisionCardList: { key: Division; label: string; icon: string }[] = [
@@ -82,18 +86,38 @@ export function VirtualOfficeToolbar({
             </span>
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            Jelajahi studio kerja, komunikasi langsung dengan agent, dan atur strategi bisnis Anda.
+            Jelajahi studio kerja, kelola agent & skill secara dinamis, dan atur strategi bisnis Anda.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenTeamChat}
-          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-md transition-all active:scale-95 cursor-pointer"
-        >
-          {Icon('MessageSquare', { className: 'w-4 h-4 text-sky-400' })}
-          <span>Chat dengan tim</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenAgentManager}
+            className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300/80 px-4 py-2 rounded-full text-xs font-bold shadow-2xs transition-all active:scale-95 cursor-pointer"
+          >
+            {Icon('Users', { className: 'w-4 h-4 text-blue-600' })}
+            <span>Kelola Agent ({agents.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenCreateAgent}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            {Icon('Plus', { className: 'w-4 h-4' })}
+            <span>Tambah Agent</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenTeamChat}
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+          >
+            {Icon('MessageSquare', { className: 'w-4 h-4 text-sky-400' })}
+            <span>Chat Tim</span>
+          </button>
+        </div>
       </div>
 
       {/* 6 Division Cards Grid */}
