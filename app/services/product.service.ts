@@ -282,6 +282,11 @@ export const ProductService = {
                 const rawCatName = String(matchedCat?.name || p.category_name || '').trim();
                 const category_name = (!rawCatName || rawCatName === 'undefined' || rawCatName === 'null') ? 'Lainnya' : rawCatName;
 
+                const validRules = priceRules.filter((r: any) => Number(r.price || 0) > 0);
+                const computedPrice = validRules.length > 0
+                  ? Number(validRules.sort((a: any, b: any) => Number(a.min_qty) - Number(b.min_qty))[0].price)
+                  : Number(p.total_price || p.price || 0);
+
                 return {
                   id: p.id,
                   uid: p.uid,
@@ -292,8 +297,8 @@ export const ProductService = {
                   category_id: p.category_id,
                   category_name,
                   description,
-                  price: Number(p.total_price || p.price || 0),
-                  total_price: Number(p.total_price || p.price || 0),
+                  price: computedPrice,
+                  total_price: computedPrice,
                   show_in_dashboard: p.show_in_dashboard ?? 1,
                   product_price_rules: priceRules,
                   product_variants: variants,
@@ -398,13 +403,18 @@ export const ProductService = {
           : [];
       } catch {}
 
-      // Calculate base price
-      const defaultVariant = variants.find((v: any) => +v.is_default === 1);
-      const basePrice = defaultVariant
-        ? Number(defaultVariant.base_price || 0)
-        : price_rules.length > 0
-        ? Number(price_rules[0].price || 0)
-        : Number(payload.price || payload.total_price || 0);
+      // Calculate base price correctly: prioritize valid tiered price rules first
+      const validRules = price_rules.filter((r: any) => Number(r.price || 0) > 0);
+      let basePrice = 0;
+      if (validRules.length > 0) {
+        const sortedRules = [...validRules].sort((a: any, b: any) => Number(a.min_qty) - Number(b.min_qty));
+        basePrice = Number(sortedRules[0].price);
+      } else if (Number(payload.price || payload.total_price || 0) > 0) {
+        basePrice = Number(payload.price || payload.total_price || 0);
+      } else {
+        const defaultVariant = variants.find((v: any) => +v.is_default === 1);
+        basePrice = Number(defaultVariant?.base_price || 0);
+      }
 
       const productPayload: any = {
         name,

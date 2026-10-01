@@ -176,12 +176,31 @@ export function ProductItemCell(product: ProductItem) {
   );
 }
 
-export function ProductPriceCell(product: ProductItem) {
-  const defaultVariant = product.product_variants?.find((v) => +v.is_default === 1);
-  const basePrice = defaultVariant
-    ? defaultVariant.base_price
-    : product.product_price_rules?.[0]?.price || product.total_price || 0;
+// ============================================================================
+// 2. Active Filter Badges & Price Display Helpers
+// ============================================================================
 
+export function getProductDisplayPrice(product: ProductItem): number {
+  if (product.product_price_rules && product.product_price_rules.length > 0) {
+    const valid = product.product_price_rules.filter((r) => Number(r.price || 0) > 0);
+    if (valid.length > 0) {
+      const sorted = [...valid].sort((a, b) => Number(a.min_qty) - Number(b.min_qty));
+      return Number(sorted[0].price);
+    }
+  }
+  if (Number(product.total_price || product.price || 0) > 0) {
+    return Number(product.total_price || product.price || 0);
+  }
+  const defaultVar = product.product_variants?.find((v) => +v.is_default === 1);
+  if (defaultVar && Number(defaultVar.base_price || 0) > 0) {
+    return Number(defaultVar.base_price);
+  }
+  return 0;
+}
+
+export function ProductPriceCell(product: ProductItem) {
+  const basePrice = getProductDisplayPrice(product);
+  const defaultVariant = product.product_variants?.find((v) => +v.is_default === 1);
   const hasVariantsWithoutDefault =
     (product.product_variants?.length || 0) > 0 && !defaultVariant;
 
@@ -715,7 +734,8 @@ export function CreateOrEditProductModal({
   const addPriceRule = () => {
     const lastRule = priceRules[priceRules.length - 1];
     const nextMin = lastRule ? Number(lastRule.min_qty) + 10 : 10;
-    setPriceRules([...priceRules, { min_qty: nextMin, price: 0 }]);
+    setPriceRules((prev) => [...prev, { min_qty: nextMin, price: 0 }]);
+    toast.success(`Aturan harga grosir baru berhasil ditambahkan.`);
   };
 
   const updatePriceRule = (idx: number, field: 'min_qty' | 'price', val: number) => {
@@ -725,12 +745,34 @@ export function CreateOrEditProductModal({
   };
 
   const removePriceRule = (idx: number) => {
-    setPriceRules(priceRules.filter((_, i) => i !== idx));
+    const target = priceRules[idx];
+    const label = `Aturan Min. ${target?.min_qty || 1} pcs`;
+    ConfirmDialog.delete({
+      name: label,
+      title: 'Hapus Aturan Grosir?',
+      text: `Apakah Anda yakin ingin menghapus ${label}?`,
+      onConfirm: () => {
+        setPriceRules((prev) => prev.filter((_, i) => i !== idx));
+        toast.success(`${label} berhasil dihapus.`);
+      },
+    });
   };
 
   // Variants Handlers
   const addVariant = () => {
-    setVariants([...variants, { variant_name: '', base_price: 0, is_default: 0 }]);
+    const emptyIdx = variants.findIndex((v) => !v.variant_name.trim());
+    if (emptyIdx !== -1) {
+      toast.warning(`Harap lengkapi nama variasi ke-${emptyIdx + 1} terlebih dahulu sebelum menambah variasi baru.`);
+      return;
+    }
+
+    const isFirst = variants.length === 0;
+    const nextIndex = variants.length + 1;
+    setVariants((prev) => [
+      ...prev,
+      { variant_name: '', base_price: 0, is_default: isFirst ? 1 : 0 },
+    ]);
+    toast.success(`Variasi baru #${nextIndex} berhasil ditambahkan. Silakan lengkapi nama dan harga.`);
   };
 
   const updateVariant = (idx: number, field: 'variant_name' | 'base_price', val: any) => {
@@ -740,20 +782,34 @@ export function CreateOrEditProductModal({
   };
 
   const setDefaultVariant = (idx: number) => {
-    setVariants(
-      variants.map((v, i) => ({
+    setVariants((prev) =>
+      prev.map((v, i) => ({
         ...v,
         is_default: i === idx ? 1 : 0,
       }))
     );
+    const targetName = variants[idx]?.variant_name?.trim() || `Variasi #${idx + 1}`;
+    toast.info(`"${targetName}" dijadikan sebagai variasi default.`);
   };
 
   const removeVariant = (idx: number) => {
-    const filtered = variants.filter((_, i) => i !== idx);
-    if (filtered.length > 0 && !filtered.some((v) => +v.is_default === 1)) {
-      filtered[0].is_default = 1;
-    }
-    setVariants(filtered);
+    const target = variants[idx];
+    const varName = target?.variant_name?.trim() || `Variasi #${idx + 1}`;
+    ConfirmDialog.delete({
+      name: varName,
+      title: 'Hapus Variasi Produk?',
+      text: `Apakah Anda yakin ingin menghapus variasi "${varName}"? Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: () => {
+        setVariants((prev) => {
+          const filtered = prev.filter((_, i) => i !== idx);
+          if (filtered.length > 0 && !filtered.some((v) => +v.is_default === 1)) {
+            filtered[0].is_default = 1;
+          }
+          return filtered;
+        });
+        toast.success(`Variasi "${varName}" berhasil dihapus.`);
+      },
+    });
   };
 
   const hasVariantsWithoutDefault =
@@ -915,10 +971,10 @@ export function CreateOrEditProductModal({
       // Row 4: Aturan Harga Grosir (Tiers)
       createElement(
         'div',
-        { className: 'p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2.5' },
+        { className: 'p-3.5 bg-slate-50/90 rounded-xl border border-slate-200 space-y-3' },
         createElement(
           'div',
-          { className: 'flex items-center justify-between' },
+          { className: 'flex items-center justify-between gap-2 flex-wrap pb-1' },
           createElement(
             'div',
             { className: 'text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5' },
@@ -930,64 +986,84 @@ export function CreateOrEditProductModal({
             {
               type: 'button',
               onClick: addPriceRule,
-              className: 'text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer',
+              className:
+                'text-xs font-bold text-blue-600 bg-white border border-blue-200 hover:bg-blue-50 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all shadow-2xs shrink-0 whitespace-nowrap',
             },
-            Icon('Plus', { className: 'w-3 h-3' }),
+            Icon('Plus', { className: 'w-3.5 h-3.5' }),
             'Tambah Aturan'
           )
         ),
         priceRules.length === 0
           ? createElement('p', { className: 'text-xs text-slate-400 italic' }, 'Belum ada aturan harga grosir.')
-          : priceRules.map((rule, idx) =>
-              createElement(
-                'div',
-                {
-                  key: idx,
-                  className: 'flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs',
-                },
-                createElement('span', { className: 'text-xs font-semibold text-slate-500 whitespace-nowrap' }, 'Min Qty:'),
-                createElement('input', {
-                  type: 'number',
-                  min: 1,
-                  value: rule.min_qty,
-                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => updatePriceRule(idx, 'min_qty', Number(e.target.value)),
-                  className:
-                    'w-16 border border-slate-300 rounded p-1 text-xs font-bold text-center outline-none focus:ring-1 focus:ring-[#103557]',
-                }),
-                createElement('span', { className: 'text-xs font-semibold text-slate-500 whitespace-nowrap' }, 'Harga:'),
-                createElement(PriceInput, {
-                  value: rule.price,
-                  onChange: (val) => updatePriceRule(idx, 'price', val),
-                }),
+          : createElement(
+              'div',
+              { className: 'space-y-2.5 max-h-[260px] overflow-y-auto pr-1' },
+              priceRules.map((rule, idx) =>
                 createElement(
-                  'button',
+                  'div',
                   {
-                    type: 'button',
-                    onClick: () => removePriceRule(idx),
-                    className: 'p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer',
-                    title: 'Hapus Aturan',
+                    key: idx,
+                    className: 'p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2',
                   },
-                  Icon('Trash2', { className: 'w-3.5 h-3.5' })
+                  createElement(
+                    'div',
+                    { className: 'flex items-center justify-between gap-2' },
+                    createElement(
+                      'div',
+                      { className: 'flex items-center gap-1.5' },
+                      createElement('span', { className: 'text-xs font-bold text-slate-600 whitespace-nowrap' }, 'Min. Kuantitas:'),
+                      createElement('input', {
+                        type: 'number',
+                        min: 1,
+                        value: rule.min_qty,
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => updatePriceRule(idx, 'min_qty', Number(e.target.value)),
+                        className:
+                          'w-20 border border-slate-300 rounded-lg p-1 text-xs font-bold text-center outline-none focus:ring-1 focus:ring-[#103557]',
+                      }),
+                      createElement('span', { className: 'text-xs text-slate-500 font-semibold' }, 'pcs')
+                    ),
+                    createElement(
+                      'button',
+                      {
+                        type: 'button',
+                        onClick: () => removePriceRule(idx),
+                        className: 'p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0',
+                        title: 'Hapus Aturan',
+                      },
+                      Icon('Trash2', { className: 'w-4 h-4' })
+                    )
+                  ),
+                  createElement(
+                    'div',
+                    { className: 'flex items-center gap-2 pt-1 border-t border-slate-100' },
+                    createElement('span', { className: 'text-[11px] font-bold text-slate-500 whitespace-nowrap' }, 'Harga Satuan:'),
+                    createElement(PriceInput, {
+                      value: rule.price,
+                      placeholder: '0',
+                      className: 'w-full',
+                      onChange: (val) => updatePriceRule(idx, 'price', val),
+                    })
+                  )
                 )
               )
             )
       ),
 
-      // Row 5: Variasi Produk
+      // Row 5: Variasi Produk (Mobile-Optimized & Responsive)
       createElement(
         'div',
-        { className: 'p-3 bg-blue-50/50 rounded-xl border border-blue-200/80 space-y-2.5' },
+        { className: 'p-3.5 bg-blue-50/60 rounded-xl border border-blue-200/80 space-y-3' },
         hasVariantsWithoutDefault
           ? createElement(
               'div',
               { className: 'p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs font-bold text-rose-700 flex items-center gap-1.5' },
-              Icon('AlertTriangle', { className: 'w-4 h-4 text-rose-600' }),
+              Icon('AlertTriangle', { className: 'w-4 h-4 text-rose-600 shrink-0' }),
               'PENTING: Pilih salah satu varian default dengan mengklik ikon bintang!'
             )
           : null,
         createElement(
           'div',
-          { className: 'flex items-center justify-between' },
+          { className: 'flex items-center justify-between gap-2 flex-wrap pb-1' },
           createElement(
             'div',
             { className: 'text-xs font-bold text-[#103557] uppercase tracking-wide flex items-center gap-1.5' },
@@ -999,59 +1075,86 @@ export function CreateOrEditProductModal({
             {
               type: 'button',
               onClick: addVariant,
-              className: 'text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer',
+              className:
+                'text-xs font-bold text-[#0097B2] bg-white border border-[#0097B2]/30 hover:bg-[#0097B2] hover:text-white px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-all shadow-2xs shrink-0 whitespace-nowrap',
             },
-            Icon('Plus', { className: 'w-3 h-3' }),
+            Icon('Plus', { className: 'w-3.5 h-3.5' }),
             'Tambah Variasi'
           )
         ),
         variants.length === 0
           ? createElement('p', { className: 'text-xs text-slate-400 italic' }, 'Belum ada variasi produk.')
-          : variants.map((v, idx) => {
-              const isDefault = +v.is_default === 1;
-              return createElement(
-                'div',
-                {
-                  key: idx,
-                  className: `flex items-center gap-2 p-2 rounded-lg border shadow-2xs transition-all ${
-                    isDefault ? 'bg-amber-50/80 border-amber-300' : 'bg-white border-slate-200'
-                  }`,
-                },
-                createElement(
-                  'button',
+          : createElement(
+              'div',
+              { className: 'space-y-2.5 max-h-[300px] overflow-y-auto pr-1' },
+              variants.map((v, idx) => {
+                const isDefault = +v.is_default === 1;
+                return createElement(
+                  'div',
                   {
-                    type: 'button',
-                    onClick: () => setDefaultVariant(idx),
-                    className: `p-1 rounded cursor-pointer ${isDefault ? 'text-amber-500 hover:text-amber-600' : 'text-slate-300 hover:text-amber-400'}`,
-                    title: isDefault ? 'Variasi Default Terpilih' : 'Jadikan Default',
+                    key: idx,
+                    className: cn(
+                      'p-2.5 rounded-xl border shadow-2xs transition-all space-y-2',
+                      isDefault ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-300/50' : 'bg-white border-slate-200'
+                    ),
                   },
-                  Icon('Star', { className: `w-4 h-4 ${isDefault ? 'fill-amber-500 text-amber-500' : ''}` })
-                ),
-                createElement('input', {
-                  type: 'text',
-                  placeholder: 'Nama variasi (misal: Lengan Panjang)',
-                  value: v.variant_name,
-                  onChange: (e: React.ChangeEvent<HTMLInputElement>) => updateVariant(idx, 'variant_name', e.target.value),
-                  className:
-                    'flex-1 border border-slate-300 rounded p-1.5 text-xs font-medium text-slate-800 outline-none focus:ring-1 focus:ring-[#103557] bg-white',
-                }),
-                createElement('span', { className: 'text-xs font-semibold text-slate-500 whitespace-nowrap' }, '+ Harga:'),
-                createElement(PriceInput, {
-                  value: v.base_price,
-                  onChange: (val) => updateVariant(idx, 'base_price', val),
-                }),
-                createElement(
-                  'button',
-                  {
-                    type: 'button',
-                    onClick: () => removeVariant(idx),
-                    className: 'p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer',
-                    title: 'Hapus Variasi',
-                  },
-                  Icon('Trash2', { className: 'w-3.5 h-3.5' })
-                )
-              );
-            })
+                  // Line 1: Default Star Toggle + Variant Name Input + Delete Button
+                  createElement(
+                    'div',
+                    { className: 'flex items-center gap-2' },
+                    createElement(
+                      'button',
+                      {
+                        type: 'button',
+                        onClick: () => setDefaultVariant(idx),
+                        className: cn(
+                          'p-1.5 rounded-lg border transition-all cursor-pointer shrink-0',
+                          isDefault
+                            ? 'bg-amber-100 border-amber-300 text-amber-600'
+                            : 'bg-slate-50 border-slate-200 text-slate-300 hover:text-amber-500'
+                        ),
+                        title: isDefault ? 'Variasi Default Terpilih' : 'Klik untuk jadikan variasi default',
+                      },
+                      Icon('Star', { className: cn('w-4 h-4', isDefault && 'fill-amber-500 text-amber-500') })
+                    ),
+                    createElement('input', {
+                      type: 'text',
+                      placeholder: 'Nama variasi (misal: Rompi, Workshirt, 2XL, dsb)',
+                      value: v.variant_name,
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => updateVariant(idx, 'variant_name', e.target.value),
+                      className:
+                        'flex-1 min-w-0 border border-slate-300 rounded-lg p-2 text-xs md:text-sm font-medium text-slate-800 outline-none focus:ring-1 focus:ring-[#103557] bg-white',
+                    }),
+                    createElement(
+                      'button',
+                      {
+                        type: 'button',
+                        onClick: () => removeVariant(idx),
+                        className: 'p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0',
+                        title: 'Hapus Variasi',
+                      },
+                      Icon('Trash2', { className: 'w-4 h-4' })
+                    )
+                  ),
+                  // Line 2: Full-Width Price Input (+ Tambahan Harga) with full visibility on mobile
+                  createElement(
+                    'div',
+                    { className: 'flex items-center gap-2 pt-1 border-t border-slate-100/80' },
+                    createElement(
+                      'span',
+                      { className: 'text-[11px] font-bold text-slate-500 whitespace-nowrap' },
+                      '+ Tambahan Harga:'
+                    ),
+                    createElement(PriceInput, {
+                      value: v.base_price,
+                      placeholder: '0',
+                      className: 'w-full',
+                      onChange: (val) => updateVariant(idx, 'base_price', val),
+                    })
+                  )
+                );
+              })
+            )
       ),
 
       // Row 6: Toggle Dashboard Checkbox
@@ -1667,7 +1770,7 @@ export function renderProductMobileCard(
         createElement(
           'div',
           { className: 'font-extrabold text-sm text-[#103557] mt-1' },
-          formatCurrency(product.total_price || product.price || 0)
+          formatCurrency(getProductDisplayPrice(product))
         )
       )
     ),
