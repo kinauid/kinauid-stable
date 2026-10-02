@@ -163,19 +163,27 @@ export class OrderFormService {
               : prodJson?.data?.items ?? prodJson?.items ?? [];
 
             if (items.length > 0) {
-              products = items.map((p: any) => ({
-                id: String(p.id),
-                code: p.code || '',
-                name: p.name || 'Produk',
-                image: p.image || '',
-                type: p.type || 'single',
-                category_id: p.category_id,
-                category_name: p.category_name || '',
-                price: Number(p.total_price || p.price || 0),
-                total_price: Number(p.total_price || p.price || 0),
-                product_variants: Array.isArray(p.product_variants) ? p.product_variants : [],
-                product_price_rules: Array.isArray(p.product_price_rules) ? p.product_price_rules : [],
-              }));
+              products = items.map((p: any) => {
+                const priceRules = Array.isArray(p.product_price_rules) ? p.product_price_rules : [];
+                const validRules = priceRules.filter((r: any) => Number(r.price || 0) > 0);
+                const computedPrice = validRules.length > 0
+                  ? Number(validRules.sort((a: any, b: any) => Number(a.min_qty) - Number(b.min_qty))[0].price)
+                  : Number(p.total_price || p.price || 0);
+
+                return {
+                  id: String(p.id),
+                  code: p.code || '',
+                  name: p.name || 'Produk',
+                  image: p.image || '',
+                  type: p.type || 'single',
+                  category_id: p.category_id,
+                  category_name: p.category_name || '',
+                  price: computedPrice,
+                  total_price: computedPrice,
+                  product_variants: Array.isArray(p.product_variants) ? p.product_variants : [],
+                  product_price_rules: priceRules,
+                };
+              });
             }
           }
         } catch (e) {

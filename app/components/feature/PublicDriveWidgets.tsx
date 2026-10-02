@@ -1214,22 +1214,34 @@ export function PublicDriveWidget({ data, isSubmitting }: PublicDriveWidgetProps
       <style>{`
         @media print {
           @page {
-            size: A5 portrait;
-            margin: 8mm;
+            size: A4 portrait !important;
+            margin: 6mm 8mm !important;
           }
-          body {
+          html, body {
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
             background: white !important;
             color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .no-print {
             display: none !important;
           }
           .print-container {
-            max-width: 100% !important;
+            max-width: 195mm !important;
+            max-height: 285mm !important;
             border: none !important;
             box-shadow: none !important;
             padding: 0 !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+            overflow: hidden !important;
           }
         }
       `}</style>

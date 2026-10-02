@@ -657,22 +657,25 @@ export class OrderService {
   }
 
   static async updateOrderStatus(id: string, status: any, notes?: string) {
+    const backendStatus = status === 'completed' ? 'done' : status;
     try {
       await safeFetchBackend('/update', {
         table: 'orders',
         data: {
-          status,
+          status: backendStatus,
           ...(notes ? { notes } : {}),
           modified_on: new Date().toISOString(),
         },
         where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
       });
-    } catch {}
+    } catch (err) {
+      ErrorCatch({ error: err, context: 'OrderService:updateOrderStatus' });
+    }
 
     const order = ORDERS_DB.find((o) => o.id === id || o.order_number === id);
     if (order) {
       order.status = status;
-      if (status === 'completed') order.payment_status = 'paid';
+      if (status === 'completed' || status === 'done') order.payment_status = 'paid';
       if (notes) order.notes = `${order.notes || ''} [Update: ${notes}]`.trim();
     }
 

@@ -691,11 +691,20 @@ export function createOrderTableColumns(send: any, navigate?: (path: string) => 
       header: 'Status Produksi',
       width: '135px',
       cell: (row) => {
+        const currentVal = row.status === 'done' ? 'completed' : row.status;
         return createElement(
           'select',
           {
-            value: row.status,
-            onChange: (e: any) => send.submit({ intent: 'update-status', id: row.id, status: e.target.value }, { method: 'post' }),
+            value: currentVal,
+            onChange: (e: any) => {
+              const val = e.target.value;
+              send.submit({ intent: 'update-status', id: row.id, status: val }, { method: 'post' });
+              toast.success(
+                `Status produksi diubah ke: ${
+                  ORDER_STATUS_OPTIONS.find((o) => o.value === val)?.label || val
+                }`
+              );
+            },
             className:
               'text-xs font-semibold px-2 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs text-slate-700 focus:ring-1 focus:ring-[#103557] outline-none cursor-pointer',
           },
@@ -1476,35 +1485,35 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
       'div',
       {
         ref,
-        className: `printable-nota p-6 sm:p-8 bg-white text-gray-800 font-sans w-full max-w-[210mm] mx-auto min-h-[297mm] flex flex-col print:p-0 print:max-w-none print:min-h-0 print:w-full ${className}`,
+        className: `printable-nota p-4 sm:p-5 bg-white text-gray-800 font-sans w-full max-w-[210mm] mx-auto flex flex-col justify-between print:p-0 print:m-0 print:max-w-none print:w-full print:h-[282mm] print:max-h-[282mm] ${className}`,
       },
       // Content Wrapper
       createElement(
         'div',
-        { className: 'flex-1' },
+        { className: 'flex-1 flex flex-col justify-between' },
         // 1. Header Section
         createElement(
           'div',
-          { className: 'flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-6' },
+          { className: 'flex justify-between items-start border-b-2 border-gray-800 pb-2 mb-3' },
           createElement(
             'div',
             null,
             createElement(
               'div',
-              { className: 'flex items-center gap-2 mb-2' },
+              { className: 'flex items-center gap-2 mb-1' },
               createElement('img', {
                 src: '/kinau-logo.png',
                 alt: 'Kinau',
-                className: 'w-28 h-auto object-contain',
+                className: 'w-24 h-auto object-contain',
               })
             ),
             createElement(
               'div',
-              { className: 'mb-1' },
-              createElement('p', { className: 'text-[11px] font-bold text-gray-800 leading-tight uppercase' }, 'PT Kinau Digital Kreatif'),
+              { className: 'mb-0.5' },
+              createElement('p', { className: 'text-[10px] font-bold text-gray-800 leading-tight uppercase' }, 'PT Kinau Digital Kreatif'),
               createElement(
                 'div',
-                { className: 'text-[9px] text-gray-500 font-mono mt-0.5 uppercase' },
+                { className: 'text-[8px] text-gray-500 font-mono mt-0.5 uppercase' },
                 createElement('p', null, 'NIB: 0204260115049'),
                 createElement('p', null, 'NPWP: 05.091.550.3-232.3000')
               )
@@ -1513,11 +1522,11 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
           createElement(
             'div',
             { className: 'text-right' },
-            createElement('h2', { className: 'text-2xl font-black text-gray-900 uppercase tracking-tighter' }, 'NOTA PESANAN'),
-            createElement('p', { className: 'text-sm font-mono text-gray-600 font-bold' }, `#${order.order_number || order.id}`),
+            createElement('h2', { className: 'text-xl font-black text-gray-900 uppercase tracking-tighter' }, 'NOTA PESANAN'),
+            createElement('p', { className: 'text-xs font-mono text-gray-600 font-bold' }, `#${order.order_number || order.id}`),
             createElement(
               'p',
-              { className: 'text-xs text-gray-500 mt-0.5' },
+              { className: 'text-[10px] text-gray-500 mt-0.5' },
               `Tanggal: ${formatFullDate(order.created_on || order.created_at || order.created_by?.created_at)}`
             )
           )
@@ -1526,54 +1535,54 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         // 2. Info Pelanggan & Deadline Grid
         createElement(
           'div',
-          { className: 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8' },
+          { className: 'grid grid-cols-2 gap-3 mb-3' },
           // Pemesan Box
           createElement(
             'div',
-            { className: 'bg-gray-50 p-4 rounded-lg border border-gray-200' },
+            { className: 'bg-gray-50 p-2.5 rounded-lg border border-gray-200' },
             createElement(
               'div',
-              { className: 'flex justify-between items-start mb-1' },
-              createElement('h3', { className: 'text-[10px] font-bold text-gray-400 uppercase tracking-wider' }, 'Pemesan'),
+              { className: 'flex justify-between items-start mb-0.5' },
+              createElement('h3', { className: 'text-[9px] font-bold text-gray-400 uppercase tracking-wider' }, 'Pemesan'),
               isSponsor
                 ? createElement(
                     'span',
                     {
                       className:
-                        'bg-purple-600/10 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider',
+                        'bg-purple-600/10 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase tracking-wider',
                     },
                     'Partner / Sponsor'
                   )
                 : null
             ),
-            createElement('p', { className: 'font-bold text-lg text-gray-900 leading-tight' }, pemesanName),
-            picDisplay ? createElement('p', { className: 'text-sm text-gray-600 mt-1' }, picDisplay) : null
+            createElement('p', { className: 'font-bold text-sm text-gray-900 leading-tight' }, pemesanName),
+            picDisplay ? createElement('p', { className: 'text-xs text-gray-600 mt-0.5' }, picDisplay) : null
           ),
           // Deadline & Status Box
           createElement(
             'div',
-            { className: 'bg-gray-50 p-4 rounded-lg border border-gray-200' },
+            { className: 'bg-gray-50 p-2.5 rounded-lg border border-gray-200' },
             createElement(
               'div',
-              { className: 'flex justify-between items-start mb-2' },
+              { className: 'flex justify-between items-start mb-1' },
               createElement(
                 'div',
                 null,
-                createElement('h3', { className: 'text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1' }, 'Deadline'),
-                createElement('p', { className: 'font-bold text-sm text-gray-900' }, formatFullDate(order.deadline_at || order.deadline))
+                createElement('h3', { className: 'text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5' }, 'Deadline'),
+                createElement('p', { className: 'font-bold text-xs text-gray-900' }, formatFullDate(order.deadline_at || order.deadline))
               )
             ),
             createElement(
               'div',
-              { className: 'flex justify-between items-center pt-2 border-t border-gray-200/60' },
+              { className: 'flex justify-between items-center pt-1.5 border-t border-gray-200/60' },
               createElement(
                 'div',
                 null,
-                createElement('h3', { className: 'text-[10px] font-bold text-gray-400 uppercase mb-1' }, 'Status Pembayaran'),
+                createElement('h3', { className: 'text-[9px] font-bold text-gray-400 uppercase mb-0.5' }, 'Status Pembayaran'),
                 createElement(
                   'span',
                   {
-                    className: `text-xs font-bold px-2 py-1 text-white rounded uppercase ${
+                    className: `text-[10px] font-bold px-1.5 py-0.5 text-white rounded uppercase ${
                       order.payment_status === 'paid'
                         ? 'bg-emerald-600'
                         : order.payment_status === 'down_payment' || order.payment_status === 'partial_dp'
@@ -1587,11 +1596,11 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
               createElement(
                 'div',
                 { className: 'text-right' },
-                createElement('h3', { className: 'text-[10px] font-bold text-gray-400 uppercase mb-1' }, 'Status'),
+                createElement('h3', { className: 'text-[9px] font-bold text-gray-400 uppercase mb-0.5' }, 'Status'),
                 createElement(
                   'span',
                   {
-                    className: `text-xs font-bold px-2 py-1 rounded uppercase ${
+                    className: `text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
                       order.status === 'done' || order.status === 'completed'
                         ? 'bg-emerald-600 text-white'
                         : order.status === 'pending'
@@ -1611,17 +1620,17 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         // 3. Tabel Items
         createElement(
           'table',
-          { className: 'w-full mb-8' },
+          { className: 'w-full mb-3' },
           createElement(
             'thead',
             null,
             createElement(
               'tr',
               { className: 'border-b-2 border-gray-800' },
-              createElement('th', { className: 'text-left py-3 text-xs font-bold uppercase text-gray-600' }, 'Deskripsi Produk'),
-              createElement('th', { className: 'text-right py-3 text-xs font-bold uppercase text-gray-600 w-20' }, 'Qty'),
-              createElement('th', { className: 'text-right py-3 text-xs font-bold uppercase text-gray-600 w-32' }, 'Harga'),
-              createElement('th', { className: 'text-right py-3 text-xs font-bold uppercase text-gray-600 w-32' }, 'Subtotal')
+              createElement('th', { className: 'text-left py-1.5 text-[10px] font-bold uppercase text-gray-600' }, 'Deskripsi Produk'),
+              createElement('th', { className: 'text-right py-1.5 text-[10px] font-bold uppercase text-gray-600 w-16' }, 'Qty'),
+              createElement('th', { className: 'text-right py-1.5 text-[10px] font-bold uppercase text-gray-600 w-28' }, 'Harga'),
+              createElement('th', { className: 'text-right py-1.5 text-[10px] font-bold uppercase text-gray-600 w-28' }, 'Subtotal')
             )
           ),
           createElement(
@@ -1646,18 +1655,18 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
                 { key: idx, className: 'break-inside-avoid' },
                 createElement(
                   'td',
-                  { className: 'py-4 text-sm' },
+                  { className: 'py-2 text-xs' },
                   createElement('span', { className: 'font-semibold text-gray-900' }, item.product_name || order.product_name),
                   item.variant_name
                     ? createElement('span', { className: 'text-blue-600 font-medium' }, ` (${item.variant_name})`)
                     : null,
                   item.notes
-                    ? createElement('p', { className: 'text-[10px] text-gray-500 mt-0.5' }, item.notes)
+                    ? createElement('p', { className: 'text-[9px] text-gray-500 mt-0.5' }, item.notes)
                     : null
                 ),
-                createElement('td', { className: 'py-4 text-right text-sm text-gray-800' }, `${item.qty || 1}`),
-                createElement('td', { className: 'py-4 text-right text-sm text-gray-800' }, formatCurrency(unitPrice)),
-                createElement('td', { className: 'py-4 text-right font-bold text-sm text-gray-900' }, formatCurrency(finalPrice))
+                createElement('td', { className: 'py-2 text-right text-xs text-gray-800' }, `${item.qty || 1}`),
+                createElement('td', { className: 'py-2 text-right text-xs text-gray-800' }, formatCurrency(unitPrice)),
+                createElement('td', { className: 'py-2 text-right font-bold text-xs text-gray-900' }, formatCurrency(finalPrice))
               );
             })
           )
@@ -1666,32 +1675,32 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         // 4. Ringkasan Biaya & Informasi Pembayaran
         createElement(
           'div',
-          { className: 'flex flex-col sm:flex-row justify-between gap-6 mb-4' },
+          { className: 'flex flex-row justify-between gap-4 mb-3' },
           // Informasi Pembayaran Box
           createElement(
             'div',
-            { className: 'flex-1 p-4 bg-gray-50 border border-gray-200 rounded-lg' },
+            { className: 'flex-1 p-2.5 bg-gray-50 border border-gray-200 rounded-lg' },
             createElement(
               'h3',
-              { className: 'text-xs font-bold text-gray-700 uppercase mb-3 flex items-center gap-2' },
-              createElement('span', { className: 'w-1 h-4 bg-gray-800 rounded' }),
+              { className: 'text-[10px] font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5' },
+              createElement('span', { className: 'w-1 h-3.5 bg-gray-800 rounded' }),
               'Informasi Pembayaran'
             ),
             createElement(
               'div',
-              { className: 'bg-white p-3 rounded border border-gray-200' },
-              createElement('p', { className: 'text-sm font-semibold text-gray-800 mb-1' }, 'Bank Syariah Indonesia (BSI)'),
-              createElement('p', { className: 'text-lg font-mono font-bold text-gray-900 tracking-wide' }, '7366544822'),
-              createElement('p', { className: 'text-xs text-gray-600 mt-1.5' }, 'a.n PT KINAU DIGITAL KREATIF')
+              { className: 'bg-white p-2 rounded border border-gray-200' },
+              createElement('p', { className: 'text-xs font-semibold text-gray-800 mb-0.5' }, 'Bank Syariah Indonesia (BSI)'),
+              createElement('p', { className: 'text-base font-mono font-bold text-gray-900 tracking-wide' }, '7366544822'),
+              createElement('p', { className: 'text-[10px] text-gray-600 mt-1' }, 'a.n PT KINAU DIGITAL KREATIF')
             )
           ),
           // Ringkasan Biaya Box
           createElement(
             'div',
-            { className: 'w-full sm:w-72 space-y-2' },
+            { className: 'w-64 space-y-1.5' },
             createElement(
               'div',
-              { className: 'flex justify-between text-sm' },
+              { className: 'flex justify-between text-xs' },
               createElement('span', { className: 'text-gray-500' }, 'Total Tagihan'),
               createElement('span', { className: 'font-bold text-gray-900' }, formatCurrency(subtotal))
             ),
@@ -1701,13 +1710,13 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
                   null,
                   createElement(
                     'div',
-                    { className: 'flex justify-between text-sm' },
+                    { className: 'flex justify-between text-xs' },
                     createElement('span', { className: 'text-gray-500' }, 'Diskon'),
                     createElement('span', { className: 'font-medium text-rose-600' }, `-${formatCurrency(discountAmount)}`)
                   ),
                   createElement(
                     'div',
-                    { className: 'flex justify-between text-sm' },
+                    { className: 'flex justify-between text-xs' },
                     createElement('span', { className: 'text-gray-500' }, 'Setelah Diskon'),
                     createElement('span', { className: 'font-bold text-gray-900' }, formatCurrency(total))
                   )
@@ -1715,13 +1724,13 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
               : null,
             createElement(
               'div',
-              { className: 'flex justify-between text-sm' },
+              { className: 'flex justify-between text-xs' },
               createElement('span', { className: 'text-gray-500' }, 'Sudah Bayar (DP)'),
               createElement('span', { className: 'font-medium text-emerald-600' }, formatCurrency(paid))
             ),
             createElement(
               'div',
-              { className: 'flex justify-between border-t border-gray-800 pt-2 text-sm' },
+              { className: 'flex justify-between border-t border-gray-800 pt-1 text-xs' },
               createElement('span', { className: 'font-black text-gray-900 uppercase' }, 'SISA PEMBAYARAN'),
               createElement(
                 'span',
@@ -1732,8 +1741,8 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
             isPaidOff
               ? createElement(
                   'div',
-                  { className: 'flex items-center justify-end gap-1.5 text-[10px] text-emerald-600 font-black uppercase tracking-wider mt-1' },
-                  Icon('CheckCircle', { className: 'w-3.5 h-3.5 text-emerald-600' }),
+                  { className: 'flex items-center justify-end gap-1 text-[9px] text-emerald-600 font-black uppercase tracking-wider mt-0.5' },
+                  Icon('CheckCircle', { className: 'w-3 h-3 text-emerald-600' }),
                   'PESANAN LUNAS'
                 )
               : null
@@ -1743,13 +1752,13 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         // 5. Footer Cetak (Terms & Signature Stamp)
         createElement(
           'div',
-          { className: 'mt-6 pt-4 border-t border-dashed border-gray-200 flex justify-between items-end' },
+          { className: 'mt-2 pt-2 border-t border-dashed border-gray-200 flex justify-between items-end' },
           createElement(
             'div',
-            { className: 'max-w-md' },
+            { className: 'max-w-xs' },
             createElement(
               'p',
-              { className: 'text-xs text-gray-700' },
+              { className: 'text-[10px] text-gray-700' },
               'Link akses bukti pesanan: ',
               createElement(
                 'span',
@@ -1759,7 +1768,7 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
             ),
             createElement(
               'div',
-              { className: 'text-[10px] text-gray-400 leading-relaxed mt-2' },
+              { className: 'text-[8px] text-gray-400 leading-tight mt-1' },
               createElement('p', { className: 'font-bold text-gray-600 mb-0.5' }, 'Syarat & Ketentuan:'),
               createElement('p', null, '1. Barang yang sudah dibeli tidak dapat ditukar/dikembalikan.'),
               createElement('p', null, '2. Bukti nota ini sah sebagai bukti pengambilan barang.'),
@@ -1773,21 +1782,21 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
           ),
           createElement(
             'div',
-            { className: 'text-center w-40 pt-1 relative' },
-            createElement('p', { className: 'text-[10px] uppercase font-bold text-gray-700' }, 'Hormat Kami,'),
+            { className: 'text-center w-36 pt-0.5 relative' },
+            createElement('p', { className: 'text-[9px] uppercase font-bold text-gray-700' }, 'Hormat Kami,'),
             createElement(
               'div',
-              { className: 'relative h-16 flex items-center justify-center' },
+              { className: 'relative h-12 flex items-center justify-center' },
               isPaidOff
                 ? createElement('img', {
                     src: '/capkinau.png',
                     alt: 'Cap Kinau',
-                    className: 'absolute w-24 opacity-80 pointer-events-none select-none',
+                    className: 'absolute w-20 opacity-80 pointer-events-none select-none',
                     style: { transform: 'rotate(-20deg)' },
                   })
                 : null
             ),
-            createElement('p', { className: 'text-xs border-t border-gray-800 font-bold text-gray-900 pt-1' }, 'Admin Kinau.id')
+            createElement('p', { className: 'text-[10px] border-t border-gray-800 font-bold text-gray-900 pt-0.5' }, 'Admin Kinau.id')
           )
         )
       ),
@@ -1795,14 +1804,14 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
       // 6. Fixed Bottom Contact Footer
       createElement(
         'div',
-        { className: 'mt-auto pt-6 border-t-2 border-gray-800' },
+        { className: 'mt-auto pt-2 border-t border-gray-800' },
         createElement(
           'div',
           { className: 'text-center' },
-          createElement('p', { className: 'text-xs font-bold text-gray-700 mb-2.5 tracking-wider uppercase' }, 'HUBUNGI KAMI'),
+          createElement('p', { className: 'text-[9px] font-bold text-gray-700 mb-1 tracking-wider uppercase' }, 'HUBUNGI KAMI'),
           createElement(
             'div',
-            { className: 'flex flex-wrap justify-center gap-x-6 gap-y-1 text-[10px] text-gray-600' },
+            { className: 'flex flex-wrap justify-center gap-x-4 gap-y-0.5 text-[8.5px] text-gray-600' },
             createElement(
               'div',
               { className: 'flex items-center gap-1' },
@@ -1830,7 +1839,7 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
           ),
           createElement(
             'p',
-            { className: 'text-[9px] text-gray-400 mt-2' },
+            { className: 'text-[8px] text-gray-400 mt-1' },
             'Jalan Terusan Jl. Murai 1 No.7 , Kel. Korpri Raya, Kec. Sukarame, Kota Bandar Lampung, Lampung.'
           )
         )
@@ -1841,6 +1850,21 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
         dangerouslySetInnerHTML: {
           __html: `
             @media print {
+              @page {
+                size: A4 portrait !important;
+                margin: 5mm 6mm !important;
+              }
+              html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               body * {
                 visibility: hidden !important;
               }
@@ -1848,30 +1872,27 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
                 visibility: visible !important;
               }
               .printable-nota {
-                position: fixed !important;
+                position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
                 width: 100% !important;
-                max-width: 100% !important;
-                min-height: 100% !important;
-                margin: 0 !important;
-                padding: 10mm !important;
+                max-width: 198mm !important;
+                height: 100% !important;
+                max-height: 285mm !important;
+                margin: 0 auto !important;
+                padding: 4mm 6mm !important;
+                box-sizing: border-box !important;
                 box-shadow: none !important;
                 border: none !important;
                 background: white !important;
                 z-index: 999999 !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                page-break-before: avoid !important;
+                overflow: hidden !important;
               }
               .no-print {
                 display: none !important;
-              }
-              @page {
-                size: A4;
-                margin: 0;
-              }
-              body {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                background: white !important;
               }
               .bg-gray-50 {
                 background-color: #f9fafb !important;
@@ -2244,7 +2265,7 @@ export function renderOrderMobileCard(order: OrderItem, index: number, send: any
       createElement(
         'select',
         {
-          value: order.status,
+          value: order.status === 'done' ? 'completed' : order.status,
           onChange: (e: any) => {
             send.submit({ intent: 'update-status', id: order.id, status: e.target.value }, { method: 'post' });
             toast.success(
