@@ -97,6 +97,7 @@ export const CreateArchiveSchema = z.object({
 });
 
 export interface OrderState {
+  id?: string;
   search?: string;
   tab?: 'reguler' | 'kkn' | 'portfolio' | 'all';
   year?: string;
@@ -109,6 +110,10 @@ export interface OrderState {
   portfolio_only?: boolean;
   sortBy?: string;
   page?: number;
+}
+
+export interface OrderManageState extends OrderState {
+  id?: string;
 }
 
 export const BANK_ACCOUNTS_PRESET = [

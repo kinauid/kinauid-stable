@@ -32,7 +32,7 @@ export class ProfileService {
       email: session?.user_email || 'admin@kinau.id',
       phone: '+62 852-1933-7474',
       role: session?.user_role || 'admin',
-      avatar: '/icon/kinau-logo-icon.png',
+      avatar: '',
       institution_name: 'PT Kinau Digital Kreatif',
       bio: 'Operasional Sistem & Percetakan Digital Kinau ID.',
       language: 'id',

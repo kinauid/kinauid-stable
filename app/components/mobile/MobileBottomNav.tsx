@@ -36,7 +36,7 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
     'nav',
     {
       className:
-        'fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-6 py-2 flex items-center justify-around md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.06)] select-none',
+        'fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#103557]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 px-6 py-2 flex items-center justify-around md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.06)] select-none transition-colors',
     },
     // Item 1: Overview
     createElement(
@@ -46,8 +46,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         className: () =>
           `flex flex-col items-center justify-center gap-1 transition-all no-underline ${
             isOverviewActive
-              ? 'text-[#103557] font-black'
-              : 'text-slate-400 hover:text-slate-700 font-medium'
+              ? 'text-[#103557] dark:text-sky-300 font-black'
+              : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium'
           }`,
       },
       createElement(
@@ -55,8 +55,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         {
           className: `p-1.5 rounded-xl transition-all ${
             isOverviewActive
-              ? 'bg-[#103557]/10 text-[#103557]'
-              : 'text-slate-400'
+              ? 'bg-[#103557]/10 dark:bg-sky-400/20 text-[#103557] dark:text-sky-300'
+              : 'text-slate-400 dark:text-slate-400'
           }`,
         },
         UI.Icon('LayoutDashboard', { size: 20 })
@@ -75,8 +75,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         className: () =>
           `flex flex-col items-center justify-center gap-1 transition-all no-underline ${
             isPesananActive
-              ? 'text-[#103557] font-black'
-              : 'text-slate-400 hover:text-slate-700 font-medium'
+              ? 'text-[#103557] dark:text-sky-300 font-black'
+              : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium'
           }`,
       },
       createElement(
@@ -84,8 +84,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         {
           className: `p-1.5 rounded-xl transition-all ${
             isPesananActive
-              ? 'bg-[#103557]/10 text-[#103557]'
-              : 'text-slate-400'
+              ? 'bg-[#103557]/10 dark:bg-sky-400/20 text-[#103557] dark:text-sky-300'
+              : 'text-slate-400 dark:text-slate-400'
           }`,
         },
         UI.Icon('FileText', { size: 20 })
@@ -104,8 +104,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         className: () =>
           `flex flex-col items-center justify-center gap-1 transition-all no-underline ${
             isProfilActive
-              ? 'text-[#103557] font-black'
-              : 'text-slate-400 hover:text-slate-700 font-medium'
+              ? 'text-[#103557] dark:text-sky-300 font-black'
+              : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium'
           }`,
       },
       createElement(
@@ -113,8 +113,8 @@ export function MobileBottomNav({ pathname }: MobileBottomNavProps) {
         {
           className: `p-1.5 rounded-xl transition-all ${
             isProfilActive
-              ? 'bg-[#103557]/10 text-[#103557]'
-              : 'text-slate-400'
+              ? 'bg-[#103557]/10 dark:bg-sky-400/20 text-[#103557] dark:text-sky-300'
+              : 'text-slate-400 dark:text-slate-400'
           }`,
         },
         UI.Icon('User', { size: 20 })

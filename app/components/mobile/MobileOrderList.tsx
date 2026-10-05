@@ -1,8 +1,10 @@
-import React, { createElement, useState, useMemo } from 'react';
+import React, { createElement, useState, useMemo, useEffect, useRef } from 'react';
 import { Icon, modals } from '~/builder';
 import { type OrderItem, type OrderState } from '~/schemas/order.schema';
 import { formatCurrency, formatTimeAgo } from '~/utils/format';
 import { getWhatsAppLink } from '~/constants/brand';
+import { buildEncryptedUrl } from '~/utils/cryptoState';
+import { formatKknGroupName } from '~/components/feature/OrderListWidgets';
 import { toast } from 'sonner';
 
 export interface MobileOrderListProps {
@@ -40,6 +42,8 @@ export interface MobileOrderListProps {
  *    - Total Tagihan, DP, & Sisa Tagihan
  *    - One-tap navigation to Order Details (/app/order-manage?id=...)
  *    - Action buttons for WhatsApp PIC, Preview Nota, and Status Update
+ * 5. Mobile Pagination with Page Jumps & Previous/Next Navigation
+ * 6. Native TopBar Event Listeners (OPEN_MOBILE_SEARCH & OPEN_MOBILE_FILTER)
  */
 export function MobileOrderList({
   data,
@@ -53,8 +57,42 @@ export function MobileOrderList({
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(urlState.search || '');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const rawOrders: OrderItem[] = data?.orders || [];
+
+  // Listen to TopBar search & filter trigger events
+  useEffect(() => {
+    const handleMobileSearch = (e: any) => {
+      const search = e?.detail?.search ?? '';
+      updateUrlState({ search, page: 1 });
+    };
+
+    const handleOpenFilter = () => {
+      modals.open('ORDER_FILTER_MODAL', {
+        filters: urlState,
+        viewMode: urlState.tab,
+        onApply: (f: any) => updateUrlState(f),
+        onReset: () =>
+          updateUrlState({
+            year: '',
+            status: 'all',
+            payment_status: 'all',
+            order_type: 'all',
+            category: 'all',
+            kkn_institution: '',
+          }),
+      });
+    };
+
+    window.addEventListener('MOBILE_SEARCH_SUBMIT', handleMobileSearch);
+    window.addEventListener('OPEN_MOBILE_FILTER', handleOpenFilter);
+
+    return () => {
+      window.removeEventListener('MOBILE_SEARCH_SUBMIT', handleMobileSearch);
+      window.removeEventListener('OPEN_MOBILE_FILTER', handleOpenFilter);
+    };
+  }, [urlState, updateUrlState]);
 
   // Compute status summary counts from real API data
   const pendingCount = useMemo(() => {
@@ -88,12 +126,6 @@ export function MobileOrderList({
     ).length || 0;
   }, [rawOrders]);
 
-  // Handle live search submit
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateUrlState({ search: searchInput, page: 1 });
-  };
-
   // Active filter count
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -104,6 +136,20 @@ export function MobileOrderList({
     if (urlState.kkn_institution) count++;
     return count;
   }, [urlState]);
+
+  // Pagination calculation
+  const currentPage = Number(urlState.page) || 1;
+  const totalItems = data?.totalCount ?? data?.filteredCount ?? rawOrders.length;
+  const pageSize = 50;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    updateUrlState({ page: newPage });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   // Helper for Status Badge
   const getStatusBadge = (status: string) => {
@@ -144,10 +190,11 @@ export function MobileOrderList({
   };
 
   const handleOrderClick = (order: OrderItem) => {
+    const targetUrl = buildEncryptedUrl('/app/order-manage', { id: String(order.id) });
     if (navigate) {
-      navigate(`/app/order-manage?id=${order.id}`);
+      navigate(targetUrl);
     } else {
-      window.location.href = `/app/order-manage?id=${order.id}`;
+      window.location.href = targetUrl;
     }
   };
 
@@ -255,66 +302,101 @@ export function MobileOrderList({
         </button>
       </div>
 
-      {/* ── 3. Search Bar + Filter Modal Trigger ── */}
-      <div className="flex items-center gap-2">
-        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Cari nomor pesanan, instansi, PIC..."
-            className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-[#103557] shadow-2xs"
-          />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-            {Icon('Search', { size: 15 })}
-          </div>
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchInput('');
-                updateUrlState({ search: '', page: 1 });
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              {Icon('X', { size: 14 })}
-            </button>
-          )}
-        </form>
-
-        <button
-          type="button"
-          onClick={() =>
-            modals.open('ORDER_FILTER_MODAL', {
-              filters: urlState,
-              viewMode: urlState.tab,
-              onApply: (f: any) => updateUrlState(f),
-              onReset: () =>
-                updateUrlState({
-                  year: '',
-                  status: 'all',
-                  payment_status: 'all',
-                  order_type: 'all',
-                  category: 'all',
-                  kkn_institution: '',
-                }),
-            })
-          }
-          className={`px-3 py-2.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs ${
-            activeFilterCount > 0
-              ? 'bg-[#103557] text-white border-[#103557]'
-              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-          }`}
-        >
-          {Icon('Filter', { size: 14 })}
-          <span>Filter</span>
-          {activeFilterCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-white text-[#103557] text-[10px] font-black flex items-center justify-center">
-              {activeFilterCount}
+      {/* ── 3. Active Filter & Search Chips (Synchronized with TopBar) ── */}
+      {(urlState.search || activeFilterCount > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap px-0.5 pt-0.5">
+          {urlState.search && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50 text-[#103557] border border-blue-200 text-xs font-semibold">
+              <span>Cari: "{urlState.search}"</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ search: '', page: 1 })}
+                className="hover:text-blue-900 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Hapus filter pencarian"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
             </span>
           )}
-        </button>
-      </div>
+          {urlState.status && urlState.status !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-semibold">
+              <span>Status: {getStatusBadge(urlState.status).label}</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ status: 'all', page: 1 })}
+                className="hover:text-slate-950 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
+            </span>
+          )}
+          {urlState.payment_status && urlState.payment_status !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-semibold">
+              <span>Bayar: {getPaymentBadge(urlState.payment_status).label}</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ payment_status: 'all', page: 1 })}
+                className="hover:text-slate-950 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
+            </span>
+          )}
+          {urlState.category && urlState.category !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-semibold">
+              <span>Kategori: {urlState.category}</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ category: 'all', page: 1 })}
+                className="hover:text-slate-950 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
+            </span>
+          )}
+          {urlState.year && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-semibold">
+              <span>Tahun: {urlState.year}</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ year: '', page: 1 })}
+                className="hover:text-slate-950 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
+            </span>
+          )}
+          {urlState.kkn_institution && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-semibold">
+              <span>Kampus: {urlState.kkn_institution}</span>
+              <button
+                type="button"
+                onClick={() => updateUrlState({ kkn_institution: '', page: 1 })}
+                className="hover:text-slate-950 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {Icon('X', { size: 12 })}
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              updateUrlState({
+                search: '',
+                status: 'all',
+                payment_status: 'all',
+                year: '',
+                category: 'all',
+                kkn_institution: '',
+                page: 1,
+              })
+            }
+            className="text-xs text-rose-600 hover:text-rose-700 font-bold px-1.5 py-1 cursor-pointer"
+          >
+            Reset Semua
+          </button>
+        </div>
+      )}
 
       {/* ── 4. Sort Selector & Total Result Count ── */}
       <div className="flex items-center justify-between px-1">
@@ -405,7 +487,7 @@ export function MobileOrderList({
         </div>
 
         <span className="text-[11px] font-semibold text-slate-400">
-          {rawOrders.length} Pesanan Ditemukan
+          {rawOrders.length} Pesanan Ditampilkan
         </span>
       </div>
 
@@ -434,8 +516,9 @@ export function MobileOrderList({
             const orderNumber = order.order_number || `#ORD-${order.id}`;
 
             const isKkn = Boolean(order.is_kkn);
+            const kknGroupLabel = isKkn ? formatKknGroupName(order) : '';
             const institutionDisplay = isKkn
-              ? `${order.kkn_type?.toLowerCase() === 'ppm' ? 'Kelompok' : 'Desa'} ${order.kkn_detail || ''} (${order.institution_name || 'KKN'})`
+              ? (kknGroupLabel ? `${kknGroupLabel} (${order.institution_name || 'KKN'})` : order.institution_name || 'KKN')
               : order.institution_name || order.customer_name || 'Pelanggan Kinau';
 
             const picName = order.pic_name || order.customer_name || '-';
@@ -455,7 +538,7 @@ export function MobileOrderList({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] font-bold text-slate-400 font-mono">
-                      #{idx + 1}
+                      #{(currentPage - 1) * pageSize + idx + 1}
                     </span>
                     <span className="text-xs font-black font-mono text-slate-900">
                       {orderNumber}
@@ -485,9 +568,11 @@ export function MobileOrderList({
                     {institutionDisplay}
                   </h3>
 
-                  {isKkn && order.kkn_period && (
+                  {isKkn && (order.kkn_period || order.institution_name) && (
                     <p className="text-[11px] font-semibold text-blue-600">
-                      {order.institution_name} • Periode {order.kkn_period} {order.kkn_year || ''}
+                      {order.institution_name ? `${order.institution_name}` : ''}
+                      {order.kkn_period ? ` • Periode ${order.kkn_period}` : ''}
+                      {order.kkn_year ? ` ${order.kkn_year}` : ''}
                     </p>
                   )}
 
@@ -623,6 +708,81 @@ export function MobileOrderList({
               Reset Filter & Pencarian
             </button>
           )}
+        </div>
+      )}
+
+      {/* ── 6. Mobile Pagination Bar ── */}
+      {totalPages > 1 && (
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs flex flex-col gap-3">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="font-semibold">
+              Halaman <span className="text-slate-900 font-black">{currentPage}</span> dari{' '}
+              <span className="text-slate-900 font-black">{totalPages}</span>
+            </span>
+            <span className="text-[11px] font-mono font-medium text-slate-400">
+              Total {totalItems} Pesanan
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
+            {/* Prev Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer border ${
+                currentPage <= 1
+                  ? 'bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 active:bg-slate-100 shadow-2xs'
+              }`}
+            >
+              {Icon('ChevronLeft', { size: 14 })}
+              <span>Sebelumnya</span>
+            </button>
+
+            {/* Quick Page Jump / Indicator */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum = i + 1;
+                if (totalPages > 5) {
+                  if (currentPage > 3) {
+                    pageNum = currentPage - 2 + i;
+                    if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                  }
+                }
+                const isActive = pageNum === currentPage;
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`w-8 h-8 rounded-xl text-xs font-bold flex items-center justify-center transition cursor-pointer ${
+                      isActive
+                        ? 'bg-[#103557] text-white shadow-xs font-black'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Button */}
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer border ${
+                currentPage >= totalPages
+                  ? 'bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 active:bg-slate-100 shadow-2xs'
+              }`}
+            >
+              <span>Berikutnya</span>
+              {Icon('ChevronRight', { size: 14 })}
+            </button>
+          </div>
         </div>
       )}
     </div>

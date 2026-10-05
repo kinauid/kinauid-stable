@@ -116,7 +116,8 @@ export const OrderDownloadWidget: React.FC<OrderDownloadWidgetProps> = ({
             <p className="text-gray-600">Up. {data?.pic_name} ({data?.pic_phone})</p>
             {data?.is_kkn && (
               <p className="text-[11px] text-blue-700 font-semibold mt-1">
-                Program KKN: {data?.kkn_type} Periode {data?.kkn_period}/{data?.kkn_year} ({data?.kkn_detail})
+                Program KKN: {data?.kkn_type} Periode {data?.kkn_period}/{data?.kkn_year}
+                {data?.kkn_detail ? ` (${typeof data.kkn_detail === 'object' ? (data.kkn_detail as any).value || (data.kkn_detail as any).kelompok || (data.kkn_detail as any).desa || '' : String(data.kkn_detail).replace(/^[{\[].*[}\]]$/, '') || data.kkn_detail})` : ''}
               </p>
             )}
           </div>

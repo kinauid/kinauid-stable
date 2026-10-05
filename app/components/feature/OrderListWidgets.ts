@@ -293,10 +293,49 @@ export function safeParseObject(data: any): Record<string, any> {
   if (!data) return {};
   if (typeof data === 'object') return data;
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (typeof parsed === 'object' && parsed !== null) return parsed;
+    return { value: parsed };
   } catch {
     return { value: data };
   }
+}
+
+export function extractKknGroupValue(data: any): string {
+  if (!data) return '';
+  if (typeof data === 'object') {
+    const v = data.value ?? data.kelompok ?? data.desa ?? data.name ?? data.detail ?? '';
+    if (v && typeof v === 'object') return extractKknGroupValue(v);
+    return String(v || '').trim();
+  }
+  if (typeof data === 'string') {
+    const trimmed = data.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return extractKknGroupValue(parsed);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  return String(data || '').trim();
+}
+
+export function formatKknGroupName(order: Partial<OrderItem>): string {
+  const isPpm = order.kkn_type?.toLowerCase() === 'ppm';
+  const val = extractKknGroupValue(order.kkn_detail);
+  if (!val) {
+    return order.institution_name ? `KKN ${order.institution_name}` : 'Pesanan KKN';
+  }
+  const lower = val.toLowerCase();
+  if (isPpm) {
+    if (lower.startsWith('kelompok')) return val;
+    return `Kelompok ${val}`;
+  }
+  if (lower.startsWith('desa')) return val;
+  return `Desa ${val}`;
 }
 
 export function safeParseArray(data: any): any[] {
@@ -317,8 +356,7 @@ export function safeParseArray(data: any): any[] {
 export function OrderCustomerCell(order: OrderItem) {
   const isKkn = +(order.is_kkn ?? 0) === 1;
   const isSponsor = +(order.is_sponsor ?? 0) === 1;
-  const kknDetail = safeParseObject(order.kkn_detail);
-  const kknVal = kknDetail?.value ?? (typeof order.kkn_detail === 'string' ? order.kkn_detail : '');
+  const kknGroupLabel = formatKknGroupName(order);
 
   const phoneVal = String(order.pic_phone || order.customer_phone || ADMIN_WA);
   const waUrl = getWhatsAppLink(
@@ -339,7 +377,7 @@ export function OrderCustomerCell(order: OrderItem) {
             createElement(
               'span',
               { className: 'whitespace-nowrap font-bold text-slate-900' },
-              order.kkn_type?.toLowerCase() === 'ppm' ? `Kelompok ${kknVal}` : `Desa ${kknVal || order.institution_name}`
+              kknGroupLabel
             ),
             order.kkn_period
               ? createElement(
@@ -1455,13 +1493,8 @@ export const PrintNotaTemplate = React.forwardRef<HTMLDivElement, PrintNotaTempl
     // Customer & Instansi Resolution
     const isKkn = +(order.is_kkn ?? 0) === 1;
     const isSponsor = +(order.is_sponsor ?? 0) === 1;
-    const kknDetail = safeParseObject(order.kkn_detail);
-    const kknVal = kknDetail?.value ?? (typeof order.kkn_detail === 'string' ? order.kkn_detail : '');
-
     const pemesanName = isKkn
-      ? order.kkn_type?.toLowerCase() === 'ppm'
-        ? `Kelompok ${kknVal || order.institution_name}`
-        : `Desa ${kknVal || order.institution_name}`
+      ? formatKknGroupName(order)
       : order.institution_name || order.customer_name || 'Pelanggan Kinau';
 
     const picDisplay = order.pic_name
@@ -2161,9 +2194,7 @@ export function ViewNotaModal({ open, onClose, order, send }: any) {
                 'p',
                 { className: 'font-bold text-sm text-slate-900' },
                 +(order.is_kkn ?? 0) === 1
-                  ? order.kkn_type?.toLowerCase() === 'ppm'
-                    ? `Kelompok ${safeParseObject(order.kkn_detail)?.value || order.institution_name}`
-                    : `Desa ${safeParseObject(order.kkn_detail)?.value || order.institution_name}`
+                  ? formatKknGroupName(order)
                   : order.institution_name || order.customer_name || 'Pelanggan Kinau'
               ),
               order.pic_name || order.pic_phone
@@ -2596,12 +2627,16 @@ export function renderDesktopOrderManage({
   urlState,
   updateUrlState,
   send,
+  navigate,
 }: {
   data: any;
   urlState: any;
   updateUrlState: (s: any) => void;
   send: any;
+  navigate?: any;
 }) {
+  const selectedOrder: OrderItem | null = data?.selectedOrder || null;
+
   return Div(
     { className: 'hidden md:block space-y-5' },
     PageHeader({
@@ -2609,6 +2644,13 @@ export function renderDesktopOrderManage({
       subtitle: 'Monitoring progres pengerjaan pesanan & status pembagian kerja.',
       badges: [{ label: `${data?.activePipelines ?? 0} Order Aktif`, variant: 'primary' }],
       actions: [
+        Button({
+          label: 'Daftar Semua Pesanan',
+          icon: 'List',
+          variant: 'outline',
+          size: 'sm',
+          onClick: () => (navigate ? navigate('/app/order-list') : (window.location.href = '/app/order-list')),
+        }),
         Button({
           label: 'Input Pesanan',
           icon: 'Plus',
@@ -2618,6 +2660,87 @@ export function renderDesktopOrderManage({
         }),
       ],
     }),
+    selectedOrder
+      ? Div(
+          { className: 'bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4' },
+          Div(
+            { className: 'flex items-center justify-between border-b border-slate-100 pb-3.5' },
+            Div(
+              { className: 'flex items-center gap-3' },
+              Div(
+                { className: 'w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-mono font-bold text-sm border border-orange-200/80 shadow-2xs' },
+                Icon('Package', { size: 20 })
+              ),
+              Div(
+                null,
+                Div(
+                  { className: 'flex items-center gap-2' },
+                  Span({ className: 'font-mono font-bold text-sm text-slate-900' }, `#${selectedOrder.order_number}`),
+                  selectedOrder.is_kkn ? Badge({ label: 'KKN', variant: 'primary' }) : null
+                ),
+                Span({ className: 'text-xs text-slate-500 font-medium' }, `${selectedOrder.customer_name}${selectedOrder.institution_name ? ` • ${selectedOrder.institution_name}` : ''}`)
+              )
+            ),
+            Div(
+              { className: 'flex items-center gap-2' },
+              Button({
+                label: 'Cetak Nota A4',
+                icon: 'Printer',
+                variant: 'outline',
+                size: 'sm',
+                onClick: () => modals.open('VIEW_NOTA_MODAL', { order: selectedOrder, send }),
+              }),
+              Button({
+                label: 'Update Status',
+                icon: 'ArrowRightCircle',
+                variant: 'primary',
+                size: 'sm',
+                onClick: () =>
+                  modals.open('UPDATE_ORDER_STATUS_MODAL', {
+                    orderId: selectedOrder.id,
+                    currentStatus: selectedOrder.status,
+                    onSubmit: (v: any) => send.submit(v, { method: 'post' }),
+                  }),
+              })
+            )
+          ),
+          Div(
+            { className: 'grid grid-cols-4 gap-4 text-xs' },
+            Div(
+              { className: 'space-y-1' },
+              Span({ className: 'text-slate-400 font-medium block' }, 'Produk & Kategori'),
+              Span({ className: 'font-bold text-slate-800 block text-sm' }, selectedOrder.product_name),
+              Span({ className: 'text-slate-500 block text-[11px]' }, `${selectedOrder.category || 'Jersey'} • ${selectedOrder.total_qty} pcs`)
+            ),
+            Div(
+              { className: 'space-y-1' },
+              Span({ className: 'text-slate-400 font-medium block' }, 'Total Tagihan'),
+              Span({ className: 'font-mono font-bold text-slate-900 block text-sm' }, formatCurrency(selectedOrder.grand_total || 0)),
+              Badge({
+                label: selectedOrder.payment_status === 'paid' ? 'LUNAS' : selectedOrder.payment_status === 'down_payment' || selectedOrder.payment_status === 'partial_dp' ? 'DP TERBAYAR' : 'BELUM BAYAR',
+                variant: selectedOrder.payment_status === 'paid' ? 'success' : selectedOrder.payment_status === 'down_payment' || selectedOrder.payment_status === 'partial_dp' ? 'warning' : 'danger',
+              })
+            ),
+            Div(
+              { className: 'space-y-1' },
+              Span({ className: 'text-slate-400 font-medium block' }, 'Status Pengerjaan'),
+              Badge({
+                label: ORDER_STATUS_OPTIONS.find((o) => o.value === selectedOrder.status)?.label || selectedOrder.status,
+                variant: selectedOrder.status === 'completed' || selectedOrder.status === 'done' ? 'success' : 'primary',
+              }),
+              Span({ className: 'text-slate-500 block text-[11px]' }, `Deadline: ${selectedOrder.deadline_at || '—'}`)
+            ),
+            Div(
+              { className: 'space-y-1' },
+              Span({ className: 'text-slate-400 font-medium block' }, 'PIC Kontak'),
+              Span({ className: 'font-bold text-slate-800 block' }, selectedOrder.customer_name || '—'),
+              selectedOrder.customer_phone
+                ? Span({ className: 'text-blue-600 font-mono text-[11px] block' }, selectedOrder.customer_phone)
+                : Span({ className: 'text-slate-400 block' }, '—')
+            )
+          )
+        )
+      : null,
     StatsGrid([
       { label: 'Total Antrean Order', value: data?.totalCount, icon: 'Layers', color: 'cyan' },
       { label: 'Sedang Dikerjakan', value: data?.activePipelines, icon: 'Flame', color: 'amber' },
@@ -2656,6 +2779,12 @@ export function renderDesktopOrderManage({
         BadgeColumn({ key: 'status', map: ORDER_STATUS_BADGES }),
         BadgeColumn({ key: 'payment_status', map: PAYMENT_STATUS_BADGES }),
         TableActions<OrderItem>([
+          {
+            icon: 'Eye',
+            variant: 'outline',
+            label: 'Pilih Detail',
+            onClick: (o) => updateUrlState({ id: o.id }),
+          },
           {
             icon: 'ArrowRightCircle',
             variant: 'primary',

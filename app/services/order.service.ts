@@ -9,6 +9,7 @@ import {
 import { cacheData, invalidateCacheByTag } from '~/utils/cache';
 import { successResponse, errorResponse, ApiError } from '~/utils/apiResponse';
 import { ErrorCatch, apiFetch } from '~/lib/api';
+import { extractUrlState } from '~/utils/cryptoState';
 
 let ORDERS_DB: OrderItem[] = [];
 
@@ -22,6 +23,28 @@ const INTERNAL_API_SECRET =
   'REPLACE_WITH_STRONG_KEY';
 
 let SAVED_CONFIGS_DB: Array<JerseyConfig & { id: string; created_at: string }> = [];
+
+export function parseKknDetailValue(input: any): string {
+  if (!input) return '';
+  if (typeof input === 'object') {
+    const v = input.value ?? input.kelompok ?? input.desa ?? input.name ?? input.detail ?? '';
+    if (v && typeof v === 'object') return parseKknDetailValue(v);
+    return String(v || '').trim();
+  }
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parseKknDetailValue(parsed);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  return String(input || '').trim();
+}
 
 async function safeFetchBackend(endpoint: string, payload: any, retries = 2): Promise<Response> {
   let lastError: any;
@@ -267,10 +290,7 @@ export class OrderService {
                 kkn_type: raw.kkn_type || '',
                 kkn_period: raw.kkn_period ? String(raw.kkn_period) : '',
                 kkn_year: raw.kkn_year ? String(raw.kkn_year) : '',
-                kkn_detail:
-                  typeof raw.kkn_detail === 'string'
-                    ? raw.kkn_detail
-                    : raw.kkn_detail?.value || '',
+                kkn_detail: parseKknDetailValue(raw.kkn_detail),
                 product_name: primaryProduct,
                 category: raw.category || raw.order_type || 'Jersey',
                 order_type: raw.order_type || 'Jersey',
@@ -434,49 +454,42 @@ export class OrderService {
   static async getOrderById(id: string): Promise<OrderItem> {
     try {
       const isNum = !isNaN(Number(id));
-      const whereCondition = isNum
+      const whereCondition: Record<string, any> = isNum
         ? { id: Number(id) }
         : { order_number: id };
 
-      const response = await fetch(`${BACKEND_URL}/select`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${INTERNAL_API_SECRET}`,
-        },
-        body: JSON.stringify({
-          table: 'orders',
-          where: whereCondition,
-          include: [
-            {
-              table: 'customers',
-              alias: 'customer',
-              foreign_key: 'id',
-              reference_key: 'customer_id',
-              columns: ['id', 'name', 'phone', 'email', 'address'],
-            },
-            {
-              table: 'order_items',
-              alias: 'order_items',
-              foreign_key: 'order_number',
-              reference_key: 'order_number',
-              where: { deleted_on: 'null' },
-              columns: [
-                'id',
-                'product_id',
-                'product_name',
-                'qty',
-                'unit_price',
-                'price_rule_value',
-                'subtotal',
-                'variant_name',
-                'variant_price',
-                'variant_final_price',
-              ],
-            },
-          ],
-          size: 1,
-        }),
+      const response = await safeFetchBackend('/select', {
+        table: 'orders',
+        where: whereCondition,
+        include: [
+          {
+            table: 'customers',
+            alias: 'customer',
+            foreign_key: 'id',
+            reference_key: 'customer_id',
+            columns: ['id', 'name', 'phone', 'email', 'address'],
+          },
+          {
+            table: 'order_items',
+            alias: 'order_items',
+            foreign_key: 'order_number',
+            reference_key: 'order_number',
+            where: { deleted_on: 'null' },
+            columns: [
+              'id',
+              'product_id',
+              'product_name',
+              'qty',
+              'unit_price',
+              'price_rule_value',
+              'subtotal',
+              'variant_name',
+              'variant_price',
+              'variant_final_price',
+            ],
+          },
+        ],
+        size: 1,
       });
 
       if (response.ok) {
@@ -491,10 +504,10 @@ export class OrderService {
             raw.institution_name ||
             (raw.is_personal ? 'Pelanggan Personal' : 'Pelanggan Kinau');
           const customerPhone = raw.pic_phone || cust?.phone || '';
-          const customerEmail = cust?.email || (raw.is_personal ? 'pelanggan@kinau.id' : 'order@kinau.id');
+          const customerEmail = cust?.email || '';
           const deliveryAddress = raw.institution_name
             ? `${raw.institution_name}, Jawa Timur, Indonesia`
-            : cust?.address || 'Workshop Kinau ID (Ambil di Tempat), Malang, Jawa Timur';
+            : cust?.address || '';
 
           const primaryProduct =
             orderItems[0]?.product_name || raw.order_type || 'Pesanan Custom';
@@ -543,7 +556,7 @@ export class OrderService {
             status: sStatus,
             status_printed: sPrinted,
             payment_status: pStatus,
-            created_at: raw.order_date || raw.created_on || new Date().toISOString(),
+            created_at: raw.order_date || raw.created_on || '',
             deadline_at: raw.deadline || '—',
             notes: raw.notes || raw.kkn_detail || '',
             order_items: orderItems,
@@ -563,19 +576,25 @@ export class OrderService {
   }
 
   /**
-   * Get comprehensive data for order management route
+   * Get comprehensive data for order management route using clean encrypted state protocol
    */
-  static async getOrderManageData(request: Request) {
-    const url = new URL(request.url);
-    const searchId = url.searchParams.get('id') || url.searchParams.get('order_number');
-    const { extractUrlState } = await import('~/utils/cryptoState');
-    const state = extractUrlState<OrderState>(request, { search: '', status: 'all', category: 'all', page: 1 });
+  static async getOrderManageData(stateOrRequest: OrderState | Request) {
+    let state: OrderState = {};
+    if (stateOrRequest instanceof Request) {
+      state = extractUrlState<OrderState>(stateOrRequest, { id: '', search: '', status: 'all', category: 'all', page: 1 });
+    } else {
+      state = stateOrRequest || { id: '', search: '', status: 'all', category: 'all', page: 1 };
+    }
+
+    const searchId = state.id || state.search || '';
     const ordersData = await OrderService.getOrders(state);
     let selectedOrder: OrderItem | null = null;
     if (searchId) {
       try {
         selectedOrder = await OrderService.getOrderById(searchId);
-      } catch {}
+      } catch (err) {
+        ErrorCatch({ error: err, context: 'OrderService:getOrderManageData:getOrderById' });
+      }
     }
     if (!selectedOrder && ordersData?.orders?.length > 0) {
       selectedOrder = ordersData.orders[0];
@@ -1187,10 +1206,7 @@ export class OrderService {
                 kkn_type: raw.kkn_type || '',
                 kkn_period: raw.kkn_period ? String(raw.kkn_period) : '',
                 kkn_year: raw.kkn_year ? String(raw.kkn_year) : '',
-                kkn_detail:
-                  typeof raw.kkn_detail === 'string'
-                    ? raw.kkn_detail
-                    : raw.kkn_detail?.value || '',
+                kkn_detail: parseKknDetailValue(raw.kkn_detail),
                 product_name: primaryProduct,
                 category: raw.category || raw.order_type || 'Jersey',
                 order_type: raw.order_type || 'Jersey',

@@ -17,7 +17,7 @@ export const action = (args: ActionFunctionArgs) => handleProfileAction(args);
 
 export default createPage<InferLoader<typeof loader>, any, ProfileState>(
   ({ data, send, navigate }) => Div(
-    { className: 'w-full min-h-screen bg-[#F8FAFC]' },
+    { className: 'w-full min-h-screen bg-[#F8FAFC] dark:bg-[#0a1f30] transition-colors' },
     createElement(MobileProfileView, { profile: data?.profile as any, send, navigate })
   ),
   { defaultState: { tab: 'overview' } }

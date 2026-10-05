@@ -7,6 +7,22 @@ export function formatCurrency(n: number | string): string {
   return 'Rp ' + new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Math.max(0, num || 0));
 }
 
+export function formatCurrencyJT(n: number | string | undefined | null): string {
+  if (n === undefined || n === null || n === '') return 'Rp 0';
+  const num = typeof n === 'string' ? Number(n.replace(/[^0-9.-]+/g, '')) || 0 : n || 0;
+  if (Math.abs(num) >= 1_000_000) {
+    const valInJt = num / 1_000_000;
+    const formatted = valInJt % 1 === 0 ? valInJt.toFixed(0) : valInJt.toFixed(1).replace('.', ',');
+    return `Rp ${formatted} JT`;
+  }
+  if (Math.abs(num) >= 1_000) {
+    const valInRb = num / 1_000;
+    const formatted = valInRb % 1 === 0 ? valInRb.toFixed(0) : valInRb.toFixed(1).replace('.', ',');
+    return `Rp ${formatted} RB`;
+  }
+  return `Rp ${num.toLocaleString('id-ID')}`;
+}
+
 export function parseCurrency(str: string | number): number {
   if (!str) return 0;
   return Number(String(str).replace(/[^0-9]/g, '')) || 0;

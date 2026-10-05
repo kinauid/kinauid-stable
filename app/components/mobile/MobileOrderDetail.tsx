@@ -27,7 +27,7 @@ export function MobileOrderDetail({ order, onBack, send, navigate }: MobileOrder
   const customerEmail = (order as any).customer_email || (order as any).customer?.email || '—';
   const deliveryAddress = order.institution_name
     ? `${order.institution_name}, Jawa Timur, Indonesia`
-    : (order as any).delivery_address || (order as any).address || 'Workshop Kinau ID (Ambil di Tempat)';
+    : (order as any).delivery_address || (order as any).address || '—';
 
   // Product & Pricing info from real order and order_items
   const primaryItem = (order.order_items && order.order_items.length > 0) ? order.order_items[0] : null;
@@ -44,16 +44,36 @@ export function MobileOrderDetail({ order, onBack, send, navigate }: MobileOrder
   const quantity = primaryItem?.qty || order.total_qty || 1;
   const grandTotal = formatCurrency(order.grand_total || order.total_amount || order.subtotal || 0);
 
-  const orderDate = order.created_at ? formatFullDate(order.created_at) : 'Hari ini';
+  const orderDate = order.created_at ? formatFullDate(order.created_at) : '—';
   const isPaid = order.payment_status === 'paid';
   const isDP = order.payment_status === 'down_payment' || order.payment_status === 'partial_dp';
   const isCompleted = order.status === 'completed' || order.status === 'done';
   const isProduction = order.status === 'in_production' || order.status === 'confirmed' || order.status === 'in_design';
 
-  // Product Preview Image
+  // Product Preview Image from real data (no dummy mockup fallback)
   const productImage = (order.images && Array.isArray(order.images) && order.images[0])
     || (order.portfolio_images && order.portfolio_images[0])
-    || '/mockups/jersey-preview.png';
+    || (typeof order.images === 'string' && order.images.startsWith('http') ? order.images : null);
+
+  const hasDpProof = Boolean(order.dp_payment_proof && order.dp_payment_proof.trim() !== '');
+  const hasPaidProof = Boolean(order.payment_proof && order.payment_proof.trim() !== '');
+
+  const openUploadModal = (source: 'down_payment' | 'paid') => {
+    modals.open('UPLOAD_PAYMENT_PROOF_MODAL', {
+      order,
+      sourceUpload: source,
+      onSubmit: (payload: any) =>
+        send?.submit({ intent: 'update-payment-proof', id: order.id, ...payload }, { method: 'post' }),
+    });
+  };
+
+  const openViewModal = () => {
+    modals.open('VIEW_PAYMENT_PROOF_MODAL', {
+      order,
+      onDeleteProof: (field: string) =>
+        send?.submit({ intent: 'delete-payment-proof', id: order.id, field }, { method: 'post' }),
+    });
+  };
 
   const handleOpenNota = () => {
     modals.open('VIEW_NOTA_MODAL', { order, send });
@@ -164,16 +184,25 @@ export function MobileOrderDetail({ order, onBack, send, navigate }: MobileOrder
         // Right Product Thumbnail Preview
         createElement(
           'div',
-          { className: 'w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200/80 p-1.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden' },
-          createElement('img', {
-            src: productImage,
-            alt: productName,
-            onError: (e: any) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement.innerHTML = `<div class="text-orange-600 flex items-center justify-center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>`;
-            },
-            className: 'w-full h-full object-contain rounded-xl',
-          })
+          { className: 'w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/80 p-1.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden' },
+          productImage
+            ? createElement('img', {
+                src: productImage,
+                alt: productName,
+                onError: (e: any) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.parentElement) {
+                    e.currentTarget.parentElement.innerHTML = `<div class="text-orange-600 flex items-center justify-center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>`;
+                  }
+                },
+                className: 'w-full h-full object-contain rounded-xl',
+              })
+            : createElement(
+                'div',
+                { className: 'w-full h-full rounded-xl bg-orange-50/70 flex flex-col items-center justify-center text-orange-600 gap-1' },
+                Icon('Shirt', { size: 24 }),
+                createElement('span', { className: 'text-[9px] font-bold tracking-tight text-orange-700/80' }, order.category || 'Apparel')
+              )
         )
       ),
 
@@ -201,6 +230,109 @@ export function MobileOrderDetail({ order, onBack, send, navigate }: MobileOrder
         { className: 'bg-slate-50 rounded-2xl p-3 flex items-center justify-between' },
         createElement('span', { className: 'text-xs font-bold text-slate-600' }, 'Grand Total'),
         createElement('span', { className: 'text-base font-black font-mono text-orange-600' }, grandTotal)
+      )
+    ),
+
+    // Card: Bukti Bayar & Verifikasi Pembayaran (DP / Pelunasan)
+    createElement(
+      'div',
+      { className: 'bg-white rounded-3xl p-5 border border-slate-100 shadow-2xs space-y-4' },
+      createElement(
+        'div',
+        { className: 'flex items-center justify-between' },
+        createElement('h2', { className: 'text-sm font-black text-slate-900 tracking-tight' }, 'Status & Bukti Bayar'),
+        createElement(
+          'span',
+          {
+            className: `px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+              isPaid
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : isDP
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : 'bg-rose-50 text-rose-600 border border-rose-200'
+            }`,
+          },
+          isPaid ? 'Lunas' : isDP ? 'DP Terbayar' : 'Belum Bayar'
+        )
+      ),
+
+      // Payment Proof Action Buttons
+      createElement(
+        'div',
+        { className: 'space-y-2.5 pt-1' },
+        // 1. Bukti DP Button
+        createElement(
+          'div',
+          { className: 'flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-100' },
+          createElement(
+            'div',
+            { className: 'min-w-0' },
+            createElement('p', { className: 'text-xs font-black text-slate-900' }, 'Uang Muka (DP)'),
+            createElement(
+              'p',
+              { className: 'text-[11px] text-slate-500 mt-0.5' },
+              hasDpProof ? 'Bukti transfer DP terverifikasi' : 'Belum ada bukti transfer DP'
+            )
+          ),
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () => (hasDpProof ? openViewModal() : openUploadModal('down_payment')),
+              className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                hasDpProof
+                  ? 'bg-emerald-100/80 text-emerald-800 hover:bg-emerald-200/80'
+                  : 'bg-[#103557] text-white hover:bg-[#0c2842] shadow-2xs'
+              }`,
+            },
+            hasDpProof ? Icon('Check', { size: 13, className: 'stroke-[3]' }) : Icon('Upload', { size: 13 }),
+            hasDpProof ? 'Lihat Bukti DP' : 'Upload Bukti DP'
+          )
+        ),
+
+        // 2. Bukti Pelunasan Button
+        createElement(
+          'div',
+          { className: 'flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-100' },
+          createElement(
+            'div',
+            { className: 'min-w-0' },
+            createElement('p', { className: 'text-xs font-black text-slate-900' }, 'Pelunasan (Lunas)'),
+            createElement(
+              'p',
+              { className: 'text-[11px] text-slate-500 mt-0.5' },
+              hasPaidProof ? 'Bukti pelunasan terverifikasi' : 'Belum ada bukti pelunasan'
+            )
+          ),
+          createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () => (hasPaidProof ? openViewModal() : openUploadModal('paid')),
+              className: `px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                hasPaidProof
+                  ? 'bg-emerald-100/80 text-emerald-800 hover:bg-emerald-200/80'
+                  : 'bg-[#EA580C] text-white hover:bg-[#C2410C] shadow-2xs'
+              }`,
+            },
+            hasPaidProof ? Icon('Check', { size: 13, className: 'stroke-[3]' }) : Icon('Upload', { size: 13 }),
+            hasPaidProof ? 'Lihat Bukti Lunas' : 'Upload Bukti Lunas'
+          )
+        ),
+
+        // 3. Quick manage link if proofs exist
+        (hasDpProof || hasPaidProof)
+          ? createElement(
+              'button',
+              {
+                type: 'button',
+                onClick: openViewModal,
+                className: 'w-full text-center text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline pt-1 flex items-center justify-center gap-1 cursor-pointer',
+              },
+              Icon('Image', { size: 13 }),
+              'Kelola / Lihat Semua Bukti Pembayaran'
+            )
+          : null
       )
     ),
 

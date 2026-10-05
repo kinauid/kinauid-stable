@@ -339,8 +339,8 @@ export class OverviewService {
         completedPcs,
         completedPcsFormatted: `${completedPcs.toLocaleString('id-ID')} Pcs`,
         completedGrowth: completedPcs > 0 ? '+100%' : '0%',
-        completedBatchCount: completedBatchCount || 48,
-        capacityGoalPercent: capacityGoalPercent || 85,
+        completedBatchCount,
+        capacityGoalPercent,
         targetMonthlyPcs,
 
         highestOrder,

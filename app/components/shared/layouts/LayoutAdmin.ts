@@ -414,6 +414,29 @@ function LayoutAdminComponent({
     }
   }
 
+  // Explicit title overrides for detail and standalone app routes
+  if (pathname.startsWith("/app/order-manage")) {
+    activeGroupTitle = "PRODUKSI";
+    activePageTitle = "Detail Pesanan";
+    activePageIcon = "Package";
+  } else if (pathname.startsWith("/app/order-form")) {
+    activeGroupTitle = "PRODUKSI";
+    activePageTitle = "Input Pesanan";
+    activePageIcon = "PlusCircle";
+  } else if (pathname.startsWith("/app/order-edit")) {
+    activeGroupTitle = "PRODUKSI";
+    activePageTitle = "Edit Pesanan";
+    activePageIcon = "Edit";
+  } else if (pathname.startsWith("/app/profile")) {
+    activeGroupTitle = "AKUN";
+    activePageTitle = "Profile";
+    activePageIcon = "User";
+  } else if (pathname.startsWith("/app/order-list")) {
+    activeGroupTitle = "PRODUKSI";
+    activePageTitle = "Daftar Pesanan";
+    activePageIcon = "Layers";
+  }
+
   const handleSidebarHeaderClick = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setSidebarOpen(false);
@@ -852,6 +875,16 @@ function LayoutAdminComponent({
       onOpenProfile: () => setProfileModalOpen(true),
       activeTitle: activePageTitle,
       activeGroupTitle,
+      onSearchClick: () => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("OPEN_MOBILE_SEARCH"));
+        }
+      },
+      onFilterClick: () => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("OPEN_MOBILE_FILTER"));
+        }
+      },
     }),
     headerElement,
     mainStage,
