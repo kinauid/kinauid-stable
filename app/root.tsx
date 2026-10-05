@@ -20,7 +20,7 @@ import { getFlashMessage, type FlashMessage } from "~/lib/flash.server";
 import { getThemeFromRequest, type Theme } from "~/lib/theme.server";
 import { getSessionData, type SessionData } from "~/lib/session.server";
 import { getLanguageFromRequest, type SupportedLanguage } from "~/utils/i18n";
-import { renderRootLayout, renderRootErrorBoundary } from "~/features/root";
+import { renderRootLayout, renderRootErrorBoundary } from "~/components/shared/layouts/RootLayout";
 import stylesheet from "~/index.css?url";
 
 export const links: LinksFunction = () => [
@@ -99,9 +99,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-[var(--background)] text-[var(--foreground)] antialiased font-sans selection:bg-[var(--primary)] selection:text-white">
         {children}
-        {/* Version Badge — fixed bottom-right edge, all pages */}
+        {/* Version Badge — fixed bottom-right edge, all pages, hidden on mobile */}
         <div
           title={`Kinau ID ${APP_VERSION}`}
+          className="hidden md:block"
           style={{
             position: "fixed",
             bottom: "8px",

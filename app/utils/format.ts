@@ -47,3 +47,24 @@ export function formatFullDate(date: string | Date | number | undefined | null):
     return String(date);
   }
 }
+
+export function formatTimeAgo(date: string | Date | number | undefined | null): string {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return String(date);
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'Baru saja';
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} jam lalu`;
+    const diffDays = Math.floor(diffHour / 24);
+    if (diffDays === 1) return 'Kemarin';
+    if (diffDays < 30) return `${diffDays} hari lalu`;
+    return formatFullDate(d);
+  } catch {
+    return String(date);
+  }
+}

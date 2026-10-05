@@ -1,8 +1,10 @@
 import { createElement, useState } from 'react';
 import {
   UI,
+  Div,
   Badge,
   Modal,
+  DataTableCard,
   type DataTableCardColumn,
   type TableTabItem,
   type ActiveFilterItem,
@@ -345,3 +347,50 @@ export function TicketDetailModal({
     )
   );
 }
+
+export function renderTicketsFeature({
+  data,
+  urlState,
+  updateUrlState,
+  send,
+  isLoading,
+  isNavigating,
+}: {
+  data: any;
+  urlState: any;
+  updateUrlState: (s: any) => void;
+  send: any;
+  isLoading?: boolean;
+  isNavigating?: boolean;
+}) {
+  const [activeTicket, setActiveTicket] = useState<TicketItem | null>(null);
+
+  return Div(
+    { className: 'w-full space-y-4 select-none font-sans' },
+    DataTableCard<TicketItem>({
+      title: 'Tiket Aduan & Bug Report',
+      subtitle: 'Daftar aduan pengguna, pelacakan rute kendala, dan resolusi tiket operasional.',
+      totalItems: data?.filteredCount ?? 0,
+      isLoading: isLoading || isNavigating,
+      stats: [
+        { label: 'Tiket Terbuka (Open)', value: `${data?.openCount ?? 0} Tiket`, icon: 'Inbox', color: 'amber', description: 'Aduan baru butuh eskalasi PIC', trend: `${data?.openCount ?? 0} butuh penanganan` },
+        { label: 'Sedang Dikerjakan', value: `${data?.inProgressCount ?? 0} Tiket`, icon: 'Clock', color: 'cyan', description: 'Dalam investigasi tim teknis', trend: 'In Progress' },
+        { label: 'Tiket Selesai (Resolved)', value: `${data?.resolvedCount ?? 0} Tiket`, icon: 'CheckCircle', color: 'green', description: `${Math.round(((data?.resolvedCount ?? 0) / Math.max(1, data?.totalCount ?? 1)) * 100)}% tingkat resolusi tiket`, trend: `${data?.totalCount ?? 0} total tiket tercatat` },
+      ],
+      banner: { title: 'Pusat Eskalasi Aduan & Bug Tracking', description: 'Gunakan tombol floating di kanan bawah untuk merekam tiket dengan live detection rute URL otomatis.', icon: 'LifeBuoy' },
+      tabs: TICKET_TABS,
+      activeTab: urlState.tab,
+      onTabChange: (tab: string) => updateUrlState({ tab: tab as any }),
+      searchValue: urlState.search,
+      onSearchChange: (search: string) => updateUrlState({ search }),
+      activeFilterCount: getActiveTicketFilterBadges(urlState, updateUrlState).length,
+      activeFilters: getActiveTicketFilterBadges(urlState, updateUrlState),
+      onResetFilters: () => updateUrlState({ search: '', tab: 'all', category: 'all', priority: 'all' }),
+      columns: createTicketTableColumns(send, (t: TicketItem) => setActiveTicket(t)),
+      data: data?.tickets ?? [],
+      renderMobileCard: (t: TicketItem, idx: number) => renderTicketMobileCard(t, idx, send, (item: TicketItem) => setActiveTicket(item)),
+    }),
+    createElement(TicketDetailModal, { ticket: activeTicket, onClose: () => setActiveTicket(null) })
+  );
+}
+

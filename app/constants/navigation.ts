@@ -129,6 +129,7 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
     groupTitle: "MASTER & VENDOR",
     items: [
       { label: "Master Supplier", href: "/app/master/supplier", icon: "Truck" },
+      { label: "Mitra Vendor & Subkon", href: "/app/vendor", icon: "Users" },
       {
         label: "Manajemen Institusi",
         href: "/app/master/institution",
@@ -148,12 +149,18 @@ export const NAVIGATION_GROUPS: NavGroup[] = [
           },
         ],
       },
+      { label: "Voucher & Promo Diskon", href: "/app/setting/discount", icon: "Tag" },
       { label: "Inventaris Aset", href: "/app/asset/inventory", icon: "Cpu" },
     ],
   },
   {
     groupTitle: "SISTEM & AKSES",
     items: [
+      {
+        label: "Pengaturan Workshop",
+        href: "/app/setting/account",
+        icon: "Settings",
+      },
       {
         label: "Keamanan",
         href: "/app/system/error-logs",

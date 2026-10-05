@@ -598,7 +598,7 @@ export function VirtualOffice3D({
           sender: 'agent',
           text: reply.text,
           time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-          replyType: reply.replyType,
+          replyType: reply.replyType as any,
           actionPayload: reply.actionPayload,
         };
 

@@ -775,4 +775,27 @@ export function CustomerRankingsWidget({
   );
 }
 
+// ============================================================================
+// 9. Re-export Mobile Components from ~/components/mobile
+// ============================================================================
+export { MobileDashboardOverviewWidget, type MobileDashboardOverviewProps } from '~/components/mobile/MobileDashboardOverview';
+
+export function renderDesktopDashboard(data: any) {
+  return Div(
+    { className: 'hidden md:block space-y-6' },
+    DashboardHeaderWidget(),
+    Div(
+      { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' },
+      TotalOrderAmountCardWidget({ amount: data?.totalOrderAmountFormatted, changePercent: data?.totalOrderGrowth, lastPeriod: data?.lastPeriodAmount }),
+      PaidRevenueCardWidget({ paidAmount: data?.totalPaidFormatted, changePercent: data?.paidGrowth, piutang: data?.totalPiutangFormatted, lunas: data?.totalLunasFormatted, dp: data?.totalDpFormatted, remaining: data?.totalPiutangFormatted }),
+      ProductionCapacityCardWidget({ completedQty: data?.completedPcsFormatted, changePercent: data?.completedGrowth, batchCount: `${data?.completedBatchCount} Batch Pesanan`, goalPercent: data?.capacityGoalPercent })
+    ),
+    Div(
+      { className: 'grid grid-cols-1 lg:grid-cols-12 gap-6' },
+      Div({ className: 'lg:col-span-8' }, ProductionVolumeChartWidget({ monthlyData: data?.monthlyData, categorySummaries: data?.categorySummaries })),
+      Div({ className: 'lg:col-span-4 space-y-6' }, HighestOrderCardWidget({ highestOrder: data?.highestOrder }), NextPrintQueueWidget({ nextQueues: data?.nextQueues }))
+    ),
+    CustomerRankingsWidget({ institutionRanks: data?.institutionRanks })
+  );
+}
 

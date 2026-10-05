@@ -16,7 +16,7 @@ export function scanFeatureRoutes(appDir: string = 'app'): RouteConfigEntry[] {
   }
 
   const files = fs.readdirSync(featuresDir);
-  const featureFiles = files.filter((f) => f.endsWith('.ts') && f !== 'root.ts');
+  const featureFiles = files.filter((f) => f.endsWith('.ts'));
 
   const routes: RouteConfigEntry[] = [];
 

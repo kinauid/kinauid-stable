@@ -85,10 +85,12 @@ export function PublicDriveWidget({ data, isSubmitting }: PublicDriveWidgetProps
         })()
       : [];
 
+  const isStatusPaid = orderData.payment_status === 'paid';
   const subtotal = Number(orderData.total_amount || 0);
-  const paid = Number(orderData.dp_amount || 0);
-  const remain = Math.max(0, subtotal - paid);
-  const isPaidOff = remain === 0 || orderData.payment_status === 'paid' || !!orderData.payment_proof;
+  const rawPaid = Number(orderData.dp_amount || 0);
+  const paid = isStatusPaid ? (rawPaid > 0 ? rawPaid : subtotal) : rawPaid;
+  const remain = isStatusPaid ? 0 : Math.max(0, subtotal - paid);
+  const isPaidOff = isStatusPaid || remain === 0 || !!orderData.payment_proof;
 
   // Handlers
   const handleCreateFolder = (e: React.FormEvent) => {

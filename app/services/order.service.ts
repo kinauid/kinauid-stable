@@ -10,119 +10,7 @@ import { cacheData, invalidateCacheByTag } from '~/utils/cache';
 import { successResponse, errorResponse, ApiError } from '~/utils/apiResponse';
 import { ErrorCatch, apiFetch } from '~/lib/api';
 
-let ORDERS_DB: OrderItem[] = [
-  {
-    id: 'ord-101',
-    order_number: 'KNU-2026-089',
-    customer_name: 'Bima Satria',
-    customer_phone: '081234567890',
-    institution_name: 'BEM Universitas Airlangga',
-    is_kkn: false,
-    product_name: 'Lanyard Sublim 2.5cm + ID Card Glossy',
-    category: 'ID Card & Lanyard',
-    total_qty: 850,
-    unit_price: 12500,
-    subtotal: 10625000,
-    discount: 625000,
-    grand_total: 10000000,
-    status: 'in_production',
-    status_printed: 'printed',
-    payment_status: 'partial_dp',
-    created_at: '2026-03-14',
-    deadline_at: '2026-03-28',
-    notes: 'Kait stopper hitam matte, packaging per 50 pcs.',
-  },
-  {
-    id: 'ord-102',
-    order_number: 'KNU-2026-090',
-    customer_name: 'Dwi Prasetyo',
-    customer_phone: '085712345678',
-    institution_name: 'KKN PPM UGM Kelompok 12',
-    is_kkn: true,
-    kkn_type: 'PPM',
-    kkn_period: '2026',
-    kkn_detail: 'Desa Sumberagung',
-    product_name: 'Jersey KKN Dryfit Milano Full Print',
-    category: 'Jersey',
-    total_qty: 35,
-    unit_price: 125000,
-    subtotal: 4375000,
-    discount: 0,
-    grand_total: 4375000,
-    status: 'ready_to_ship',
-    status_printed: 'printed',
-    payment_status: 'paid',
-    created_at: '2026-03-10',
-    deadline_at: '2026-03-24',
-    notes: 'Sudah lunas via transfer BCA.',
-  },
-  {
-    id: 'ord-103',
-    order_number: 'KNU-2026-091',
-    customer_name: 'Sarah Amalia',
-    customer_phone: '081987654321',
-    institution_name: 'PT Telkom Regional V',
-    is_kkn: false,
-    product_name: 'Polo Shirt Lacoste Bordir Komputer',
-    category: 'Polo Shirt',
-    total_qty: 50,
-    unit_price: 120000,
-    subtotal: 6000000,
-    discount: 0,
-    grand_total: 6000000,
-    status: 'completed',
-    status_printed: 'printed',
-    payment_status: 'paid',
-    created_at: '2026-03-05',
-    deadline_at: '2026-03-18',
-    notes: 'Bordir dada kiri dan punggung.',
-  },
-  {
-    id: 'ord-104',
-    order_number: 'KNU-2026-092',
-    customer_name: 'Rian Pratama',
-    customer_phone: '082188887777',
-    institution_name: 'Komunitas Badminton Surabaya',
-    is_kkn: false,
-    product_name: 'Kaos Sablon DTF Komunitas',
-    category: 'Kaos Polos',
-    total_qty: 25,
-    unit_price: 85000,
-    subtotal: 2125000,
-    discount: 0,
-    grand_total: 2125000,
-    status: 'ordered',
-    status_printed: 'unprinted',
-    payment_status: 'unpaid',
-    created_at: '2026-03-18',
-    deadline_at: '2026-04-02',
-    notes: 'Menunggu konfirmasi final mockup ukuran XL.',
-  },
-  {
-    id: 'ord-105',
-    order_number: 'KNU-2026-093',
-    customer_name: 'Nadia Salsabila',
-    customer_phone: '081122334455',
-    institution_name: 'KKN Mandiri Unair Periode II',
-    is_kkn: true,
-    kkn_type: 'Mandiri',
-    kkn_period: '2026',
-    kkn_detail: 'Desa Karangmojo',
-    product_name: 'Hoodie Zipper Bordir Komputer',
-    category: 'Jaket / Hoodie',
-    total_qty: 30,
-    unit_price: 185000,
-    subtotal: 5550000,
-    discount: 150000,
-    grand_total: 5400000,
-    status: 'in_design',
-    status_printed: 'unprinted',
-    payment_status: 'partial_dp',
-    created_at: '2026-03-16',
-    deadline_at: '2026-03-30',
-    notes: 'Revisi warna tali hoodie.',
-  },
-];
+let ORDERS_DB: OrderItem[] = [];
 
 const BACKEND_URL =
   (typeof process !== 'undefined' && process.env?.VITE_KINAU_BACKEND_URL) ||
@@ -543,8 +431,13 @@ export class OrderService {
     );
   }
 
-  static async getOrderById(id: string) {
+  static async getOrderById(id: string): Promise<OrderItem> {
     try {
+      const isNum = !isNaN(Number(id));
+      const whereCondition = isNum
+        ? { id: Number(id) }
+        : { order_number: id };
+
       const response = await fetch(`${BACKEND_URL}/select`, {
         method: 'POST',
         headers: {
@@ -553,8 +446,15 @@ export class OrderService {
         },
         body: JSON.stringify({
           table: 'orders',
-          where: isNaN(Number(id)) ? { order_number: id } : { id: Number(id) },
+          where: whereCondition,
           include: [
+            {
+              table: 'customers',
+              alias: 'customer',
+              foreign_key: 'id',
+              reference_key: 'customer_id',
+              columns: ['id', 'name', 'phone', 'email', 'address'],
+            },
             {
               table: 'order_items',
               alias: 'order_items',
@@ -578,16 +478,109 @@ export class OrderService {
           size: 1,
         }),
       });
+
       if (response.ok) {
         const res = await response.json();
-        const order = res?.data?.[0] || res?.data?.items?.[0];
-        if (order) return order;
-      }
-    } catch {}
+        const raw = res?.data?.[0] || res?.data?.items?.[0] || res?.items?.[0];
+        if (raw) {
+          const cust = Array.isArray(raw.customer) ? raw.customer[0] : raw.customer;
+          const orderItems = Array.isArray(raw.order_items) ? raw.order_items : [];
+          const customerName =
+            raw.pic_name ||
+            cust?.name ||
+            raw.institution_name ||
+            (raw.is_personal ? 'Pelanggan Personal' : 'Pelanggan Kinau');
+          const customerPhone = raw.pic_phone || cust?.phone || '';
+          const customerEmail = cust?.email || (raw.is_personal ? 'pelanggan@kinau.id' : 'order@kinau.id');
+          const deliveryAddress = raw.institution_name
+            ? `${raw.institution_name}, Jawa Timur, Indonesia`
+            : cust?.address || 'Workshop Kinau ID (Ambil di Tempat), Malang, Jawa Timur';
 
-    const order = ORDERS_DB.find((o) => o.id === id || o.order_number === id);
+          const primaryProduct =
+            orderItems[0]?.product_name || raw.order_type || 'Pesanan Custom';
+          const totalQty =
+            orderItems.reduce((sum: number, it: any) => sum + (Number(it.qty) || 0), 0) ||
+            Number(raw.total_product) ||
+            1;
+          const grandTotal =
+            Number(raw.grand_total) ||
+            Number(raw.total_amount) ||
+            Number(raw.subtotal) ||
+            0;
+          const subtotal = Number(raw.subtotal) || grandTotal;
+          const discount = Number(raw.discount_value) || 0;
+          const unitPrice = orderItems[0]?.unit_price
+            ? Number(orderItems[0].unit_price)
+            : totalQty > 0
+            ? Math.round(subtotal / totalQty)
+            : grandTotal;
+
+          let pStatus = raw.payment_status || 'none';
+          if (pStatus === 'none' || pStatus === 'unpaid') pStatus = 'unpaid';
+          else if (pStatus === 'down_payment' || pStatus === 'partial_dp') pStatus = 'partial_dp';
+          else if (pStatus === 'paid') pStatus = 'paid';
+
+          let sStatus = raw.status || 'pending';
+          if (sStatus === 'done') sStatus = 'completed';
+
+          let sPrinted = raw.status_printed || 'waiting';
+          if (sPrinted === 'done') sPrinted = 'printed';
+
+          return {
+            id: String(raw.id),
+            order_number: raw.order_number || `KNU-${raw.id}`,
+            customer_name: customerName,
+            customer_phone: customerPhone,
+            institution_name: raw.institution_name || '',
+            product_name: primaryProduct,
+            category: raw.order_type || 'Jersey',
+            total_qty: totalQty,
+            unit_price: unitPrice,
+            subtotal,
+            discount,
+            grand_total: grandTotal,
+            total_amount: grandTotal,
+            status: sStatus,
+            status_printed: sPrinted,
+            payment_status: pStatus,
+            created_at: raw.order_date || raw.created_on || new Date().toISOString(),
+            deadline_at: raw.deadline || '—',
+            notes: raw.notes || raw.kkn_detail || '',
+            order_items: orderItems,
+            images: raw.images,
+            delivery_address: deliveryAddress,
+            customer_email: customerEmail,
+          } as any;
+        }
+      }
+    } catch (err) {
+      ErrorCatch({ error: err, context: 'OrderService:getOrderById' });
+    }
+
+    const order = ORDERS_DB.find((o) => String(o.id) === String(id) || o.order_number === id);
     if (!order) throw new ApiError('Pesanan tidak ditemukan', 404);
     return order;
+  }
+
+  /**
+   * Get comprehensive data for order management route
+   */
+  static async getOrderManageData(request: Request) {
+    const url = new URL(request.url);
+    const searchId = url.searchParams.get('id') || url.searchParams.get('order_number');
+    const { extractUrlState } = await import('~/utils/cryptoState');
+    const state = extractUrlState<OrderState>(request, { search: '', status: 'all', category: 'all', page: 1 });
+    const ordersData = await OrderService.getOrders(state);
+    let selectedOrder: OrderItem | null = null;
+    if (searchId) {
+      try {
+        selectedOrder = await OrderService.getOrderById(searchId);
+      } catch {}
+    }
+    if (!selectedOrder && ordersData?.orders?.length > 0) {
+      selectedOrder = ordersData.orders[0];
+    }
+    return { ...ordersData, selectedOrder };
   }
 
   static async createOrder(data: Partial<OrderItem>) {

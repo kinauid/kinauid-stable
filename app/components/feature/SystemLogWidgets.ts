@@ -1,8 +1,10 @@
 import { createElement, useState } from 'react';
 import {
   UI,
+  Div,
   Badge,
   Modal,
+  DataTableCard,
   type DataTableCardColumn,
   type TableTabItem,
   type ActiveFilterItem,
@@ -368,3 +370,50 @@ export function ErrorLogDetailModal({
     )
   );
 }
+
+export function renderErrorLogsFeature({
+  data,
+  urlState,
+  updateUrlState,
+  send,
+  isLoading,
+  isNavigating,
+}: {
+  data: any;
+  urlState: any;
+  updateUrlState: (s: any) => void;
+  send: any;
+  isLoading?: boolean;
+  isNavigating?: boolean;
+}) {
+  const [activeDetail, setActiveDetail] = useState<ErrorLogItem | null>(null);
+
+  return Div(
+    { className: 'w-full space-y-4 select-none font-sans' },
+    DataTableCard<ErrorLogItem>({
+      title: 'Error Telemetry & System Logs',
+      subtitle: 'Pemantauan crash, exception HTTP 500/4xx, dan stack trace error real-time.',
+      totalItems: data?.filteredCount ?? 0,
+      isLoading: isLoading || isNavigating,
+      stats: [
+        { label: 'Belum Selesai (Unresolved)', value: `${data?.unresolvedCount ?? 0} Error`, icon: 'AlertTriangle', color: 'rose', description: `${data?.total500 ?? 0} insiden status 500 Server Error`, trend: `${data?.unresolvedCount ?? 0} butuh penanganan` },
+        { label: '500 Internal Server Error', value: `${data?.total500 ?? 0} Insiden`, icon: 'ServerCrash', color: 'amber', description: 'Exception fatal database / pool timeout / syntax', trend: 'Prioritas Perbaikan' },
+        { label: 'Total Error Selesai', value: `${data?.resolvedCount ?? 0} Resolved`, icon: 'CheckCircle2', color: 'green', description: `${Math.round(((data?.resolvedCount ?? 0) / Math.max(1, data?.totalCount ?? 1)) * 100)}% tingkat penyelesaian`, trend: `${data?.totalCount ?? 0} total log tercatat` },
+      ],
+      banner: { title: 'Vercel-Style Error Diagnostics & Telemetry', description: 'Klik tombol Trace pada setiap baris untuk melihat dan menyalin stack trace error.', icon: 'ShieldAlert' },
+      tabs: ERROR_LOG_TABS,
+      activeTab: urlState.tab,
+      onTabChange: (tab: string) => updateUrlState({ tab: tab as any }),
+      searchValue: urlState.search,
+      onSearchChange: (search: string) => updateUrlState({ search }),
+      activeFilterCount: getActiveErrorLogFilterBadges(urlState, updateUrlState).length,
+      activeFilters: getActiveErrorLogFilterBadges(urlState, updateUrlState),
+      onResetFilters: () => updateUrlState({ search: '', tab: 'all' }),
+      columns: createErrorLogTableColumns(send, (log: ErrorLogItem) => setActiveDetail(log)),
+      data: data?.logs ?? [],
+      renderMobileCard: (log: ErrorLogItem, idx: number) => renderErrorLogMobileCard(log, idx, send, (l: ErrorLogItem) => setActiveDetail(l)),
+    }),
+    createElement(ErrorLogDetailModal, { log: activeDetail, onClose: () => setActiveDetail(null) })
+  );
+}
+

@@ -56,6 +56,67 @@ export class DriveService {
     invalidateCacheByTag('drive');
     return { id, deleted: true };
   }
+
+  static async streamFolderZip(folderId: string) {
+    const archiver = (await import('archiver')).default;
+    const { PassThrough, Readable } = await import('node:stream');
+
+    const BACKEND_URL =
+      (typeof process !== 'undefined' && process.env?.VITE_KINAU_BACKEND_URL) ||
+      'https://kinauid-backend.vercel.app';
+    const INTERNAL_API_SECRET =
+      (typeof process !== 'undefined' && process.env?.INTERNAL_API_SECRET) ||
+      'REPLACE_WITH_STRONG_KEY';
+
+    const res = await fetch(`${BACKEND_URL}/select`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${INTERNAL_API_SECRET}`,
+      },
+      body: JSON.stringify({
+        table: 'order_uploads',
+        where: { folder_id: folderId, deleted: 0 },
+        size: 200,
+      }),
+    });
+
+    const json = await res.json().catch(() => ({ data: [] }));
+    const files = Array.isArray(json?.data) ? json.data : json?.data?.items ?? [];
+
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    const passThrough = new PassThrough();
+    const stream = Readable.toWeb(passThrough);
+
+    (async () => {
+      try {
+        for (const file of files) {
+          const fileUrl = file.file_url || file.url;
+          if (fileUrl) {
+            const fileRes = await fetch(fileUrl).catch(() => null);
+            if (fileRes && fileRes.ok && fileRes.body) {
+              archive.append(Readable.fromWeb(fileRes.body as any), { name: file.file_name || `file-${file.id}.png` });
+            }
+          }
+        }
+        await archive.finalize();
+      } catch (err) {
+        ErrorCatch({ error: err, context: 'DriveService.streamFolderZip' });
+        archive.destroy();
+      }
+    })();
+
+    archive.pipe(passThrough);
+    const folderName = files[0]?.folder_name || `drive-folder-${folderId}`;
+
+    return new Response(stream as any, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${folderName}.zip"`,
+        'Cache-Control': 'no-cache',
+      },
+    });
+  }
 }
 
 export async function handleDriveAction({ request }: ActionFunctionArgs) {

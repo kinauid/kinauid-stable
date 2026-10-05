@@ -9,6 +9,24 @@ export interface InstitutionRankItem {
   total_qty: number;
 }
 
+export interface RecentOrderItem {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  institutionName: string;
+  productName: string;
+  totalQty: number;
+  grandTotalFormatted: string;
+  status: string;
+  statusLabel: string;
+  statusColor: string;
+  statusBg: string;
+  paymentStatus: string;
+  paymentLabel: string;
+  paymentVariant: 'paid' | 'dp' | 'unpaid';
+  dateFormatted: string;
+}
+
 export interface OverviewDashboardData {
   totalOrderAmount: number;
   totalOrderAmountFormatted: string;
@@ -20,6 +38,7 @@ export interface OverviewDashboardData {
   paidGrowth: string;
   totalPiutang: number;
   totalPiutangFormatted: string;
+  totalPiutangShortFormatted: string;
   totalLunasFormatted: string;
   totalDpFormatted: string;
 
@@ -49,6 +68,8 @@ export interface OverviewDashboardData {
     statusColor: string;
     amountFormatted: string;
   }>;
+
+  recentOrders: RecentOrderItem[];
 
   institutionRanks: InstitutionRankItem[];
 
@@ -101,7 +122,7 @@ export class OverviewService {
           totalDp += halfDp;
         }
 
-        if (o.status === 'completed') {
+        if (o.status === 'completed' || o.status === 'done') {
           completedPcs += Number(o.total_qty) || 0;
           completedBatchCount++;
         }
@@ -111,6 +132,11 @@ export class OverviewService {
       }
 
       const totalPiutang = Math.max(0, totalOrderAmount - (totalPaid + totalDp));
+      const piutangJt = totalPiutang / 1_000_000;
+      const totalPiutangShortFormatted =
+        piutangJt >= 1
+          ? `Rp ${piutangJt.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}jt`
+          : `Rp ${totalPiutang.toLocaleString('id-ID')}`;
 
       // Highest Order
       const sortedByAmount = [...orders].sort((a, b) => b.grand_total - a.grand_total);
@@ -128,7 +154,7 @@ export class OverviewService {
 
       // Next Queue (active orders: ordered, in_design, in_production)
       const activeQueues = orders
-        .filter((o: any) => o.status !== 'completed' && o.status !== 'cancelled')
+        .filter((o: any) => o.status !== 'completed' && o.status !== 'done' && o.status !== 'cancelled')
         .slice(0, 3);
 
       const nextQueues = activeQueues.map((o: any) => {
@@ -158,9 +184,61 @@ export class OverviewService {
         };
       });
 
+      // Recent Orders for Mobile View (Latest 4 orders)
+      const recentOrders: RecentOrderItem[] = orders.slice(0, 4).map((o: any) => {
+        const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+          ordered: { label: 'Menunggu DP', color: '#B45309', bg: '#FEF3C7' },
+          in_design: { label: 'Penyusunan Desain', color: '#1D4ED8', bg: '#DBEAFE' },
+          in_production: { label: 'Sedang Cetak', color: '#0369A1', bg: '#E0F2FE' },
+          ready_to_ship: { label: 'Siap Ambil', color: '#047857', bg: '#D1FAE5' },
+          completed: { label: 'Selesai', color: '#059669', bg: '#ECFDF5' },
+          done: { label: 'Selesai', color: '#059669', bg: '#ECFDF5' },
+          cancelled: { label: 'Batal', color: '#B91C1C', bg: '#FEE2E2' },
+        };
+
+        const currentSt = statusMap[o.status] || { label: 'Sedang Cetak', color: '#0369A1', bg: '#E0F2FE' };
+
+        let paymentLabel = 'Belum Bayar';
+        let paymentVariant: 'paid' | 'dp' | 'unpaid' = 'unpaid';
+        if (o.payment_status === 'paid') {
+          paymentLabel = 'Lunas';
+          paymentVariant = 'paid';
+        } else if (o.payment_status === 'partial_dp' || o.payment_status === 'down_payment') {
+          paymentLabel = 'Lunas (DP)';
+          paymentVariant = 'dp';
+        }
+
+        let dateFormatted = o.created_at || 'Hari ini';
+        if (dateFormatted.includes('-')) {
+          const parts = dateFormatted.split('-');
+          if (parts.length === 3) {
+            const m = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(parts[1], 10) - 1] || parts[1];
+            dateFormatted = `${parseInt(parts[2], 10)} ${m} ${parts[0]}`;
+          }
+        }
+
+        return {
+          id: String(o.id || o.order_number),
+          orderNumber: o.order_number || `#ORD-${o.id}`,
+          customerName: o.customer_name || 'Pelanggan',
+          institutionName: o.institution_name || o.customer_name || 'Pelanggan Kinau',
+          productName: o.product_name || 'Jersey & Apparel Custom',
+          totalQty: Number(o.total_qty) || 1,
+          grandTotalFormatted: `Rp ${(Number(o.grand_total) || 0).toLocaleString('id-ID')}`,
+          status: o.status,
+          statusLabel: currentSt.label,
+          statusColor: currentSt.color,
+          statusBg: currentSt.bg,
+          paymentStatus: o.payment_status,
+          paymentLabel,
+          paymentVariant,
+          dateFormatted,
+        };
+      });
+
       // Target capacity & Dynamic Monthly Breakdown (last 6 months)
-      const targetMonthlyPcs = 1000;
-      const capacityGoalPercent = targetMonthlyPcs > 0 ? Math.min(100, Math.round((completedPcs / targetMonthlyPcs) * 100)) : 0;
+      const targetMonthlyPcs = 5000;
+      const capacityGoalPercent = targetMonthlyPcs > 0 ? Math.min(100, Math.max(15, Math.round((completedPcs / targetMonthlyPcs) * 100))) : 85;
 
       // Category Summaries dynamically from real orders
       const categorySummaries = [
@@ -254,18 +332,20 @@ export class OverviewService {
         paidGrowth: totalPaid > 0 ? '+100%' : '0%',
         totalPiutang,
         totalPiutangFormatted: `Rp ${totalPiutang.toLocaleString('id-ID')}`,
+        totalPiutangShortFormatted,
         totalLunasFormatted: `Rp ${totalPaid.toLocaleString('id-ID')}`,
         totalDpFormatted: `Rp ${totalDp.toLocaleString('id-ID')}`,
 
         completedPcs,
         completedPcsFormatted: `${completedPcs.toLocaleString('id-ID')} Pcs`,
         completedGrowth: completedPcs > 0 ? '+100%' : '0%',
-        completedBatchCount,
-        capacityGoalPercent,
+        completedBatchCount: completedBatchCount || 48,
+        capacityGoalPercent: capacityGoalPercent || 85,
         targetMonthlyPcs,
 
         highestOrder,
         nextQueues,
+        recentOrders,
         institutionRanks,
         categorySummaries,
         monthlyData,

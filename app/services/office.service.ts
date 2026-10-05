@@ -5,6 +5,7 @@ import {
   type Agent,
   type AgentStatus,
   type OfficeZone,
+  type Division,
   UpdateAgentStatusSchema,
   AssignTaskSchema,
 } from '~/schemas/office.schema';

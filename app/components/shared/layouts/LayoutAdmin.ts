@@ -7,6 +7,7 @@ import { PageSkeleton } from "~/components/shared/widgets/PageSkeleton";
 import { useUIStore } from "~/components/shared/store/ui";
 import { buildEncryptedUrl, decryptCompactState } from "~/utils/cryptoState";
 import { FloatingBugReportWidget } from "~/components/feature/FloatingBugReportWidget";
+import { MobileTopBar, MobileBottomNav } from "~/components/mobile";
 
 import {
   NAVIGATION_GROUPS,
@@ -701,12 +702,12 @@ function LayoutAdminComponent({
     ),
   );
 
-  // 2. Responsive Top Header Bar with (Beri Saran Lainnya | Tanggal & Waktu Berjalan | Icon Notif)
+  // 2. Responsive Desktop Top Header Bar (hidden on mobile, replaced by MobileTopBar)
   const headerElement = createElement(
     "header",
     {
       className:
-        "h-14 px-4 sm:px-6 md:px-8 border-b border-[#E5E7EB] bg-[#FFFFFF] flex items-center justify-between shrink-0 font-sans text-xs select-none sticky top-0 z-30 relative",
+        "hidden md:flex h-14 px-4 sm:px-6 md:px-8 border-b border-[#E5E7EB] bg-[#FFFFFF] items-center justify-between shrink-0 font-sans text-xs select-none sticky top-0 z-30 relative",
     },
     // Top loading progress bar during navigation transitions
     isNavigating
@@ -716,21 +717,10 @@ function LayoutAdminComponent({
         })
       : null,
 
-    // Left: Mobile Hamburger & Dynamic Breadcrumbs
+    // Left: Breadcrumbs
     createElement(
       "div",
       { className: "flex items-center gap-2 sm:gap-3 min-w-0" },
-      createElement(
-        "button",
-        {
-          type: "button",
-          onClick: toggleSidebar,
-          "aria-label": "Buka Menu Sidebar",
-          className:
-            "lg:hidden p-2 -ml-1.5 rounded-xl text-[#103557] hover:bg-slate-100 transition-colors cursor-pointer shrink-0",
-        },
-        UI.Icon("Menu", { size: 18 }),
-      ),
       createElement(
         "div",
         {
@@ -766,23 +756,12 @@ function LayoutAdminComponent({
       ),
     ),
 
-    // Right: Status Badge | Tanggal & Waktu Berjalan | Icon Notif
+    // Right: Tanggal & Waktu Berjalan | Icon Notif
     createElement(
       "div",
       { className: "flex items-center gap-2 sm:gap-3.5 shrink-0" },
 
-      // 1. Status Workshop
-      // createElement(
-      //   'div',
-      //   {
-      //     className:
-      //       'hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]',
-      //   },
-      //   createElement('span', { className: 'w-2 h-2 rounded-full bg-[#10B981] animate-pulse' }),
-      //   createElement('span', null, 'Workshop Online')
-      // ),
-
-      // 2. Tanggal & Waktu Berjalan Realtime (Hydration-Safe)
+      // Tanggal & Waktu Berjalan Realtime (Hydration-Safe)
       createElement(
         "div",
         {
@@ -824,7 +803,7 @@ function LayoutAdminComponent({
         ),
       ),
 
-      // 3. Icon Notifikasi
+      // Icon Notifikasi
       createElement(
         "button",
         {
@@ -843,7 +822,7 @@ function LayoutAdminComponent({
     ),
   );
 
-  // 3. Main Stage Content Area (No max-w-7xl, Full Width)
+  // 3. Main Stage Content Area (Full Width, with pb-24 for mobile bottom nav)
   const mainStage = createElement(
     "main",
     {
@@ -854,7 +833,7 @@ function LayoutAdminComponent({
       ? createElement(PageSkeleton)
       : createElement(
           "div",
-          { className: "p-4 sm:p-6 md:p-8 space-y-6 w-full" },
+          { className: "p-4 sm:p-6 md:p-8 space-y-6 w-full pb-24 md:pb-8" },
           children as React.ReactElement,
         ),
   );
@@ -866,9 +845,20 @@ function LayoutAdminComponent({
       className:
         "flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#FFFFFF] lg:rounded-2xl border-0 lg:border border-[#E5E7EB] shadow-xs",
     },
+    // Dynamic Mobile Top Bar (Native App Style)
+    createElement(MobileTopBar, {
+      pathname,
+      user,
+      onOpenProfile: () => setProfileModalOpen(true),
+      activeTitle: activePageTitle,
+      activeGroupTitle,
+    }),
     headerElement,
     mainStage,
   );
+
+  // 5. Mobile Bottom Navigation Bar (Overview | Pesanan | Setting)
+  const mobileBottomNav = createElement(MobileBottomNav, { pathname });
 
   return createElement(
     "div",
@@ -885,6 +875,7 @@ function LayoutAdminComponent({
       : null,
     sidebarElement,
     mainPanel,
+    mobileBottomNav,
     createElement(FloatingBugReportWidget, { user }),
 
     // Profile & Logout Modals with dynamic session data
